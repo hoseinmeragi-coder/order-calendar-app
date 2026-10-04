@@ -223,17 +223,32 @@ if st.session_state.show_new_order_modal or is_editing:
             c_name_default = current_order["customer_name"] if is_editing else ""
             f_customer_name = st.text_input("نام و نام خانوادگی مشتری", value=c_name_default, placeholder="مثلاً: علیرضا محمدی")
         with c3:
-            c_id_default = current_order["customer_id"] if is_editing else ""
-            f_customer_id = st.text_input("آیدی / شماره تماس مشتری", value=c_id_default, placeholder="@username یا 0912...")
+            phone_default = current_order.get("phone", "") if is_editing else ""
+            f_phone = st.text_input("شماره تماس", value=phone_default, placeholder="مثلاً: 09123456789")
         with c4:
-            city_default = current_order["destination_city"] if is_editing else ""
-            f_destination_city = st.text_input("شهر مقصد", value=city_default, placeholder="مثلاً: مشهد، تهران...")
+            emergency_phone_default = current_order.get("emergency_phone", "") if is_editing else ""
+            f_emergency_phone = st.text_input("شماره تماس اضطراری", value=emergency_phone_default, placeholder="شماره تماس دوم یا معرف")
 
-        c_prod, c_date, c_stat = st.columns([1.6, 2.2, 1.2])
+        c_info1, c_info2, c_info3 = st.columns([1.5, 1.5, 3])
+        with c_info1:
+            c_id_default = current_order.get("customer_id", "") if is_editing else ""
+            f_customer_id = st.text_input("آیدی / نام کاربری مشتری", value=c_id_default, placeholder="@username یا شناسه")
+        with c_info2:
+            postal_code_default = current_order.get("postal_code", "") if is_editing else ""
+            f_postal_code = st.text_input("کد پستی", value=postal_code_default, placeholder="کد پستی ۱۰ رقمی")
+        with c_info3:
+            address_default = current_order.get("address", "") if is_editing else ""
+            f_address = st.text_input("آدرس پستی کامل", value=address_default, placeholder="استان، شهر، خیابان، کوچه، پلاک، واحد")
+
+        c_prod, c_city, c_date, c_stat = st.columns([1.5, 1, 2, 1.2])
         
         with c_prod:
             prod_name_default = current_order.get("product_name", "") if is_editing else ""
             f_product_name = st.text_input("نام محصول / مدل", value=prod_name_default, placeholder="مثلاً: باکس گل هیدروپونیک رز")
+
+        with c_city:
+            city_default = current_order.get("destination_city", "") if is_editing else ""
+            f_destination_city = st.text_input("شهر مقصد", value=city_default, placeholder="مثلاً: مشهد، تهران...")
 
         with c_date:
             st.markdown("<p style='font-weight:600; margin-bottom:5px;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)
@@ -304,6 +319,10 @@ if st.session_state.show_new_order_modal or is_editing:
                             "invoice_no": f_invoice_no,
                             "customer_id": f_customer_id,
                             "customer_name": f_customer_name,
+                            "phone": f_phone,
+                            "emergency_phone": f_emergency_phone,
+                            "address": f_address,
+                            "postal_code": f_postal_code,
                             "destination_city": f_destination_city,
                             "product_name": f_product_name,
                             "delivery_date": f_delivery_str,
@@ -326,6 +345,10 @@ if st.session_state.show_new_order_modal or is_editing:
                     "invoice_no": f_invoice_no,
                     "customer_id": f_customer_id,
                     "customer_name": f_customer_name,
+                    "phone": f_phone,
+                    "emergency_phone": f_emergency_phone,
+                    "address": f_address,
+                    "postal_code": f_postal_code,
                     "destination_city": f_destination_city,
                     "product_name": f_product_name,
                     "delivery_date": f_delivery_str,
@@ -354,7 +377,7 @@ with tab_cards:
     with col_t1:
         st.subheader("📋 مدیریت پرونده‌های مشتریان")
     with col_t2:
-        search_query = st.text_input("🔍 جستجو (نام، فاکتور، شهر، آیدی)...", "")
+        search_query = st.text_input("🔍 جستجو (نام، فاکتور، شهر، آیدی، تماس)...", "")
 
     filtered_orders = orders_list
     if search_query:
@@ -364,6 +387,10 @@ with tab_cards:
             or search_query in o.get("invoice_no", "")
             or search_query in o.get("destination_city", "")
             or search_query in o.get("customer_id", "")
+            or search_query in o.get("phone", "")
+            or search_query in o.get("emergency_phone", "")
+            or search_query in o.get("postal_code", "")
+            or search_query in o.get("address", "")
             or search_query in o.get("product_name", "")
         ]
 
@@ -380,6 +407,12 @@ with tab_cards:
                 c_card, c_act = st.columns([4.2, 0.8])
                 with c_card:
                     prod_display = order.get("product_name", "ثبت نشده")
+                    contact_phone = order.get('phone') or order.get('customer_id', '-')
+                    em_phone = order.get('emergency_phone', '')
+                    em_phone_html = f"<span>🚨 <b>تماس اضطراری:</b> {em_phone}</span>" if em_phone else ""
+                    postal_html = f"<span>📮 <b>کد پستی:</b> {order.get('postal_code')}</span>" if order.get('postal_code') else ""
+                    addr_html = f"<div style='font-size:0.85rem; color:#4a5568; margin-top:4px;'>🏠 <b>آدرس:</b> {order.get('address')}</div>" if order.get('address') else ""
+
                     st.markdown(f"""
                     <div class="order-card">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -390,12 +423,15 @@ with tab_cards:
                         </div>
                         <div style="display:flex; gap:25px; flex-wrap:wrap; font-size:0.9rem; color:#4a5568; margin-bottom:8px;">
                             <span>🏷️ <b>محصول:</b> {prod_display}</span>
-                            <span>📍 <b>مقصد:</b> {order['destination_city']}</span>
-                            <span>🆔 <b>آیدی/تماس:</b> {order['customer_id']}</span>
+                            <span>📍 <b>مقصد:</b> {order.get('destination_city', '-')}</span>
+                            <span>📞 <b>تماس:</b> {contact_phone}</span>
+                            {em_phone_html}
+                            {postal_html}
                             <span>📅 <b>تحویل:</b> {order['delivery_date']}</span>
-                            <span>📮 <b>کد رهگیری:</b> {order.get('tracking_code', '-')}</span>
+                            <span>📦 <b>کد رهگیری:</b> {order.get('tracking_code', '-')}</span>
                         </div>
-                        <div style="display:flex; gap:25px; flex-wrap:wrap; font-size:0.88rem; background:#f7fafc; padding:8px 12px; border-radius:8px;">
+                        {addr_html}
+                        <div style="display:flex; gap:25px; flex-wrap:wrap; font-size:0.88rem; background:#f7fafc; padding:8px 12px; border-radius:8px; margin-top:8px;">
                             <span>💰 <b>پیش‌پرداخت:</b> {order.get('initial_payment', 0):,} تومان</span>
                             <span>⚖️ <b>مانده تسویه:</b> <b style="color:{'#e53e3e' if order.get('remaining_payment', 0) > 0 else '#38a169'};">{order.get('remaining_payment', 0):,} تومان</b></span>
                             <span>💵 <b>جمع کل:</b> {order.get('total_price', 0):,} تومان</span>

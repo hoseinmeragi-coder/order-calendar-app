@@ -108,7 +108,7 @@ st.markdown("""
 
 DAILY_CAPACITY_LIMIT = 5
 
-# ----------------- ارتباط مستقیم و پایدار با Google Sheets -----------------
+# ----------------- ارتباط با Google Sheets -----------------
 @st.cache_resource
 def get_gspread_client():
     scopes = [
@@ -163,7 +163,6 @@ def save_orders(orders):
     except Exception as e:
         st.error(f"خطا در همگام‌سازی ابری: {e}")
 
-# بارگذاری اولیه داده‌ها
 orders_list = load_orders()
 
 if "show_new_order_modal" not in st.session_state:
@@ -406,39 +405,60 @@ with tab_cards:
             with st.container():
                 c_card, c_act = st.columns([4.2, 0.8])
                 with c_card:
-                    prod_display = order.get("product_name", "ثبت نشده")
-                    contact_phone = order.get('phone') or order.get('customer_id', '-')
-                    em_phone = order.get('emergency_phone', '')
-                    em_phone_html = f"<span>🚨 <b>تماس اضطراری:</b> {em_phone}</span>" if em_phone else ""
-                    postal_html = f"<span>📮 <b>کد پستی:</b> {order.get('postal_code')}</span>" if order.get('postal_code') else ""
-                    addr_html = f"<div style='font-size:0.85rem; color:#4a5568; margin-top:4px;'>🏠 <b>آدرس:</b> {order.get('address')}</div>" if order.get('address') else ""
+                    prod_display = order.get("product_name") or "ثبت نشده"
+                    c_name = order.get("customer_name") or "بدون نام"
+                    inv_no = order.get("invoice_no") or "-"
+                    c_status = order.get("status") or "نامشخص"
+                    city = order.get("destination_city") or "-"
+                    deliv_date = order.get("delivery_date") or "-"
+                    track_no = order.get("tracking_code") or "-"
+                    
+                    phone_val = str(order.get("phone", "")).strip()
+                    cid_val = str(order.get("customer_id", "")).strip()
+                    contact_display = phone_val if phone_val else (cid_val if cid_val else "-")
+                    
+                    em_val = str(order.get("emergency_phone", "")).strip()
+                    em_part = f"<span>🚨 <b>اضطراری:</b> {em_val}</span>" if em_val else ""
 
-                    st.markdown(f"""
-                    <div class="order-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                            <span style="font-weight:bold; font-size:1.15rem; color:#2d3748;">
-                                👤 {order['customer_name']} <span style="font-size:0.85rem; color:#718096;">({order['invoice_no']})</span>
-                            </span>
-                            <span class="badge-status {status_style}">{order.get('status', 'نامشخص')}</span>
-                        </div>
-                        <div style="display:flex; gap:25px; flex-wrap:wrap; font-size:0.9rem; color:#4a5568; margin-bottom:8px;">
-                            <span>🏷️ <b>محصول:</b> {prod_display}</span>
-                            <span>📍 <b>مقصد:</b> {order.get('destination_city', '-')}</span>
-                            <span>📞 <b>تماس:</b> {contact_phone}</span>
-                            {em_phone_html}
-                            {postal_html}
-                            <span>📅 <b>تحویل:</b> {order['delivery_date']}</span>
-                            <span>📦 <b>کد رهگیری:</b> {order.get('tracking_code', '-')}</span>
-                        </div>
-                        {addr_html}
-                        <div style="display:flex; gap:25px; flex-wrap:wrap; font-size:0.88rem; background:#f7fafc; padding:8px 12px; border-radius:8px; margin-top:8px;">
-                            <span>💰 <b>پیش‌پرداخت:</b> {order.get('initial_payment', 0):,} تومان</span>
-                            <span>⚖️ <b>مانده تسویه:</b> <b style="color:{'#e53e3e' if order.get('remaining_payment', 0) > 0 else '#38a169'};">{order.get('remaining_payment', 0):,} تومان</b></span>
-                            <span>💵 <b>جمع کل:</b> {order.get('total_price', 0):,} تومان</span>
-                        </div>
-                        {f'<div style="font-size:0.83rem; color:#718096; margin-top:6px;">📝 <i>توضیحات:</i> {order.get("product_desc")}</div>' if order.get("product_desc") else ''}
-                    </div>
-                    """, unsafe_allow_html=True)
+                    post_val = str(order.get("postal_code", "")).strip()
+                    post_part = f"<span>📮 <b>کد پستی:</b> {post_val}</span>" if post_val else ""
+
+                    addr_val = str(order.get("address", "")).strip()
+                    addr_part = f"<div style='font-size:0.85rem; color:#4a5568; margin-top:6px;'>🏠 <b>آدرس:</b> {addr_val}</div>" if addr_val else ""
+
+                    init_p = order.get("initial_payment", 0)
+                    rem_p = order.get("remaining_payment", 0)
+                    tot_p = order.get("total_price", 0)
+                    debt_color = "#e53e3e" if rem_p > 0 else "#38a169"
+
+                    desc_val = str(order.get("product_desc", "")).strip()
+                    desc_part = f"<div style='font-size:0.83rem; color:#718096; margin-top:6px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
+
+                    card_html = (
+                        f"<div class='order-card'>"
+                        f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>"
+                        f"<span style='font-weight:bold; font-size:1.15rem; color:#2d3748;'>👤 {c_name} <span style='font-size:0.85rem; color:#718096;'>({inv_no})</span></span>"
+                        f"<span class='badge-status {status_style}'>{c_status}</span>"
+                        f"</div>"
+                        f"<div style='display:flex; gap:20px; flex-wrap:wrap; font-size:0.9rem; color:#4a5568; margin-bottom:8px;'>"
+                        f"<span>🏷️ <b>محصول:</b> {prod_display}</span>"
+                        f"<span>📍 <b>مقصد:</b> {city}</span>"
+                        f"<span>📞 <b>تماس:</b> {contact_display}</span>"
+                        f"{em_part}"
+                        f"{post_part}"
+                        f"<span>📅 <b>تحویل:</b> {deliv_date}</span>"
+                        f"<span>📦 <b>کد رهگیری:</b> {track_no}</span>"
+                        f"</div>"
+                        f"{addr_part}"
+                        f"<div style='display:flex; gap:25px; flex-wrap:wrap; font-size:0.88rem; background:#f7fafc; padding:8px 12px; border-radius:8px; margin-top:8px;'>"
+                        f"<span>💰 <b>پیش‌پرداخت:</b> {init_p:,.0f} تومان</span>"
+                        f"<span>⚖️ <b>مانده تسویه:</b> <b style='color:{debt_color};'>{rem_p:,.0f} تومان</b></span>"
+                        f"<span>💵 <b>جمع کل:</b> {tot_p:,.0f} تومان</span>"
+                        f"</div>"
+                        f"{desc_part}"
+                        f"</div>"
+                    )
+                    st.markdown(card_html, unsafe_allow_html=True)
 
                 with c_act:
                     st.write("")

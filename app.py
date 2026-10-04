@@ -407,6 +407,7 @@ with tab_cards:
                 with c_card:
                     prod_display = order.get("product_name") or "ثبت نشده"
                     c_name = order.get("customer_name") or "بدون نام"
+                    c_id_tag = f" ({order.get('customer_id')})" if order.get("customer_id") else ""
                     inv_no = order.get("invoice_no") or "-"
                     c_status = order.get("status") or "نامشخص"
                     city = order.get("destination_city") or "-"
@@ -437,7 +438,7 @@ with tab_cards:
                     card_html = (
                         f"<div class='order-card'>"
                         f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>"
-                        f"<span style='font-weight:bold; font-size:1.15rem; color:#2d3748;'>👤 {c_name} <span style='font-size:0.85rem; color:#718096;'>({inv_no})</span></span>"
+                        f"<span style='font-weight:bold; font-size:1.15rem; color:#2d3748;'>👤 {c_name}{c_id_tag} <span style='font-size:0.85rem; color:#718096;'>({inv_no})</span></span>"
                         f"<span class='badge-status {status_style}'>{c_status}</span>"
                         f"</div>"
                         f"<div style='display:flex; gap:20px; flex-wrap:wrap; font-size:0.9rem; color:#4a5568; margin-bottom:8px;'>"
@@ -579,7 +580,8 @@ with tab_cal:
                     for item in day_orders[:3]:
                         badge_class = "badge-paid" if item.get("remaining_payment", 0) == 0 else "badge-debt"
                         p_title = item.get('product_name') or item.get('product_desc') or ''
-                        orders_html += f"<div class='order-badge {badge_class}' title='{p_title}'>📦 {item['customer_name']} ({item['destination_city']})</div>"
+                        item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""
+                        orders_html += f"<div class='order-badge {badge_class}' title='{p_title}'>📦 {item['customer_name']}{item_cid} ({item['destination_city']})</div>"
                     
                     if len(day_orders) > 3:
                         orders_html += f"<div style='font-size:0.7rem; color:#718096;'>+ {len(day_orders)-3} مورد دیگر...</div>"

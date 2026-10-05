@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# استایل اختصاصی راست‌‌چین (RTL) و کارت‌های مدرن + بهینه‌سازی موبایل
+# استایل اختصاصی راست‌‌چین (RTL) و کارت‌های مدرن + بهینه‌سازی تبلت و سافاری
 st.markdown("""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
@@ -26,6 +26,27 @@ st.markdown("""
     .stButton>button {
         border-radius: 10px;
         transition: all 0.3s ease;
+    }
+
+    /* کارت‌های خلاصه آمار بالا - سازگار با سافاری تبلت */
+    .metric-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .metric-label {
+        font-size: 0.85rem;
+        color: #718096;
+        margin-bottom: 6px;
+    }
+    .metric-value {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #2d3748;
     }
     
     .order-card {
@@ -104,7 +125,25 @@ st.markdown("""
         color: #c05621;
     }
 
-    /* واکنش‌گرایی مخصوص موبایل */
+    /* دکمه و باکس شیک سفارش‌های گذشته */
+    div[data-testid="stExpander"] {
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 12px !important;
+        background: #f8fafc !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
+        overflow: hidden;
+    }
+    div[data-testid="stExpander"] summary {
+        font-weight: 700 !important;
+        color: #475569 !important;
+        padding: 10px 14px !important;
+        border-radius: 10px !important;
+    }
+    div[data-testid="stExpander"] summary:hover {
+        color: #1e293b !important;
+        background: #f1f5f9 !important;
+    }
+
     @media (max-width: 768px) {
         .calendar-cell {
             min-height: 85px;
@@ -125,6 +164,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 DAILY_CAPACITY_LIMIT = 5
+
+# تابع کمکی برای فرمت و جداسازی ارقام با کاما
+def parse_int_price(val):
+    if not val:
+        return 0
+    clean_str = str(val).replace(",", "").replace("،", "").strip()
+    try:
+        return int(float(clean_str))
+    except Exception:
+        return 0
 
 # ----------------- ارتباط با Google Sheets -----------------
 @st.cache_resource
@@ -159,9 +208,9 @@ def load_orders():
         orders = df.to_dict(orient="records")
         for o in orders:
             o["id"] = int(o["id"]) if str(o.get("id", "")).isdigit() else o.get("id", "")
-            o["initial_payment"] = int(float(o["initial_payment"])) if str(o.get("initial_payment", "")).replace(".", "", 1).isdigit() else 0
-            o["remaining_payment"] = int(float(o["remaining_payment"])) if str(o.get("remaining_payment", "")).replace(".", "", 1).isdigit() else 0
-            o["total_price"] = int(float(o.get("total_price", 0))) if str(o.get("total_price", "")).replace(".", "", 1).isdigit() else (o["initial_payment"] + o["remaining_payment"])
+            o["initial_payment"] = parse_int_price(o.get("initial_payment", 0))
+            o["remaining_payment"] = parse_int_price(o.get("remaining_payment", 0))
+            o["total_price"] = parse_int_price(o.get("total_price", 0)) or (o["initial_payment"] + o["remaining_payment"])
             if "order_created_at" not in o or not o["order_created_at"]:
                 o["order_created_at"] = "1400/01/01 00:00"
         return orders
@@ -198,18 +247,42 @@ month_names = [
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
 ]
 
-# ----------------- هدر و آمار کلیدی -----------------
-st.title("🌸🌙moonflo")
+# ----------------- هدر و آمار کلیدی (رندر سازگار با وب‌کیت سافاری تبلت) -----------------
+st.title("🌸🌙Moonflo)")
 
 total_orders = len(orders_list)
 total_revenue = sum(o.get("total_price", 0) for o in orders_list)
 pending_balance = sum(o.get("remaining_payment", 0) for o in orders_list)
 
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("کل سفارش‌ها", f"{total_orders} عدد")
-m2.metric("مجموع ارزش سفارش‌ها", f"{total_revenue:,.0f} تومان")
-m3.metric("مجموع مانده حساب‌ها", f"{pending_balance:,.0f} تومان")
-m4.metric("سقف ظرفیت روزانه", f"{DAILY_CAPACITY_LIMIT} سفارش")
+with m1:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">کل سفارش‌ها</div>
+        <div class="metric-value">{total_orders} عدد</div>
+    </div>
+    """, unsafe_allow_html=True)
+with m2:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">مجموع ارزش سفارش‌ها</div>
+        <div class="metric-value">{total_revenue:,.0f} تومان</div>
+    </div>
+    """, unsafe_allow_html=True)
+with m3:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">مجموع مانده حساب‌ها</div>
+        <div class="metric-value">{pending_balance:,.0f} تومان</div>
+    </div>
+    """, unsafe_allow_html=True)
+with m4:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">سقف ظرفیت روزانه</div>
+        <div class="metric-value">{DAILY_CAPACITY_LIMIT} سفارش</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.markdown("---")
 
@@ -303,13 +376,21 @@ if st.session_state.show_new_order_modal or is_editing:
 
         cp1, cp2, cp3 = st.columns(3)
         with cp1:
-            init_val = int(current_order["initial_payment"]) if is_editing else 0
-            f_init_pay = st.number_input("واریزی اول / پیش‌پرداخت (تومان)", min_value=0, step=50000, value=init_val, format="%d")
-            st.caption(f"مقدار به تفکیک: **{f_init_pay:,.0f} تومان**")
+            init_val_num = int(current_order["initial_payment"]) if is_editing else 0
+            init_val_str = f"{init_val_num:,}" if init_val_num > 0 else ""
+            f_init_raw = st.text_input("واریزی اول / پیش‌پرداخت (تومان)", value=init_val_str, placeholder="مثلاً: 500,000")
+            parsed_init = parse_int_price(f_init_raw)
+            if parsed_init > 0:
+                st.caption(f"🔎 تفکیک‌شده: **{parsed_init:,}** تومان")
+
         with cp2:
-            rem_val = int(current_order["remaining_payment"]) if is_editing else 0
-            f_rem_pay = st.number_input("مانده تسویه (تومان)", min_value=0, step=50000, value=rem_val, format="%d")
-            st.caption(f"مقدار به تفکیک: **{f_rem_pay:,.0f} تومان**")
+            rem_val_num = int(current_order["remaining_payment"]) if is_editing else 0
+            rem_val_str = f"{rem_val_num:,}" if rem_val_num > 0 else ""
+            f_rem_raw = st.text_input("مانده تسویه (تومان)", value=rem_val_str, placeholder="مثلاً: 250,000")
+            parsed_rem = parse_int_price(f_rem_raw)
+            if parsed_rem > 0:
+                st.caption(f"🔎 تفکیک‌شده: **{parsed_rem:,}** تومان")
+
         with cp3:
             track_val = current_order.get("tracking_code", "") if is_editing else ""
             if track_val == "ثبت نشده":
@@ -332,6 +413,8 @@ if st.session_state.show_new_order_modal or is_editing:
             st.rerun()
 
         if submitted:
+            f_init_pay = parse_int_price(f_init_raw)
+            f_rem_pay = parse_int_price(f_rem_raw)
             now_jalali = jdatetime.datetime.now().strftime("%Y/%m/%d %H:%M")
             if is_editing:
                 for o in orders_list:
@@ -498,7 +581,6 @@ with tab_cards:
         ]
 
     if filtered_orders:
-        # مرتب‌سازی: اولویت ۱ با نزدیک‌ترین تاریخ تحویل، اولویت ۲ با زمان ثبت سفارش (زودتر ثبت‌شده)
         sorted_orders = sorted(
             filtered_orders,
             key=lambda x: (x.get("delivery_date", "9999/99/99"), x.get("order_created_at", "9999/99/99 99:99"))
@@ -512,7 +594,7 @@ with tab_cards:
         upcoming_orders = [o for o in sorted_orders if o.get("delivery_date", "") > tomorrow_str]
         past_orders = [o for o in sorted_orders if o.get("delivery_date", "") < today_str]
 
-        # بخش ۱: سفارش‌های فردا (اولویت اصلی طبق درخواست)
+        # بخش ۱: سفارش‌های فردا
         if tomorrow_orders:
             st.markdown(f"#### ⚡ سفارش‌های فردا ({tomorrow_str}) — {len(tomorrow_orders)} سفارش")
             for order in tomorrow_orders:
@@ -524,15 +606,15 @@ with tab_cards:
             for order in today_orders:
                 render_order_card(order)
 
-        # بخش ۳: سفارش‌های روزهای آتی
+        # بخش ۳: سفارش‌های پیش‌رو
         if upcoming_orders:
             st.markdown(f"#### 📅 سفارش‌های پیش‌رو و آتی — {len(upcoming_orders)} سفارش")
             for order in upcoming_orders:
                 render_order_card(order)
 
-        # بخش ۴: سفارش‌های گذشته
+        # بخش ۴: سفارش‌های گذشته (طراحی شیک و دکمه‌مانند)
         if past_orders:
-            with st.expander(f"📁 سفارش‌های گذشته ({len(past_orders)} سفارش)"):
+            with st.expander(f"📦 بایگانی سفارش‌های گذشته و تحویل‌شده ({len(past_orders)} سفارش)"):
                 for order in past_orders:
                     render_order_card(order)
 
@@ -562,7 +644,7 @@ with tab_cal:
     col_nav1, col_nav2, col_nav3 = st.columns([1, 2, 1])
     
     with col_nav1:
-        if st.button("⬅️️ ماه قبل", use_container_width=True, key="prev_m"):
+        if st.button("⬅ ماه قبل", use_container_width=True, key="prev_m"):
             if st.session_state.cal_month == 1:
                 st.session_state.cal_month = 12
                 st.session_state.cal_year -= 1
@@ -602,7 +684,6 @@ with tab_cal:
             orders_map[d] = []
         orders_map[d].append(o)
 
-    # اگر کاربر در موبایل باشد یا حالت نمای روزانه را انتخاب کند
     if cal_view_mode == "نمای روزانه موبایلی (لیست سفارش‌ها)":
         st.info("💡 این نما برای مرور آسان روی نمایشگر گوشی بدون نیاز به چرخش صفحه طراحی شده است.")
         found_any = False
@@ -627,7 +708,6 @@ with tab_cal:
             st.caption("در این ماه هیچ سفارشی ثبت نشده است.")
 
     else:
-        # نمای شبکه‌ای پیش‌فرض تقویم
         weekdays_fa = ["شنبه", "۱شنبه", "۲شنبه", "۳شنبه", "۴شنبه", "۵شنبه", "جمعه"]
         cols_header = st.columns(7)
         for idx, day_name in enumerate(weekdays_fa):

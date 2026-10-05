@@ -7,28 +7,38 @@ from google.oauth2.service_account import Credentials
 
 # تنظیمات اولیه صفحه
 st.set_page_config(
-    page_title="مدیریت سفارش‌ها و تقویم ظرفیت (شمسی ابری)",
+    page_title="🌸🌙Moonflo",
     page_icon="📅",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# استایل اختصاصی راست‌‌چین (RTL) و کارت‌های مدرن + بهینه‌سازی تبلت و سافاری
+# استایل اختصاصی راست‌‌چین (RTL) و کارت‌های مدرن + حل تداخل آیکون‌های Expander
 st.markdown("""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
-    * {
+    
+    html, body, [class*="css"], div, p, span, h1, h2, h3, h4, h5, h6, input, select, textarea, button {
         font-family: 'Vazirmatn', sans-serif !important;
+    }
+    
+    /* استثنا کردن آیکون‌های پیش‌فرض استریم‌لیت جهت عدم نمایش نام کد آیکون */
+    [data-testid="stIconMaterial"], .material-symbols-rounded, .material-symbols-outlined {
+        font-family: 'Material Symbols Rounded', 'Material Symbols Outlined' !important;
+        direction: ltr !important;
+    }
+    
+    .stApp {
         direction: rtl;
         text-align: right;
     }
-    
+
     .stButton>button {
         border-radius: 10px;
         transition: all 0.3s ease;
     }
 
-    /* کارت‌های خلاصه آمار بالا - سازگار با سافاری تبلت */
+    /* کارت‌های خلاصه آمار بالا - سازگار با وب‌کیت و مرورگرها */
     .metric-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -125,23 +135,28 @@ st.markdown("""
         color: #c05621;
     }
 
-    /* دکمه و باکس شیک سفارش‌های گذشته */
+    /* اصلاح اختصاصی باکس کشویی سفارش‌های گذشته و تفکیک آیکون از متن */
     div[data-testid="stExpander"] {
         border: 1px solid #cbd5e1 !important;
         border-radius: 12px !important;
-        background: #f8fafc !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
+        background: #ffffff !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important;
+        margin-top: 15px !important;
         overflow: hidden;
     }
     div[data-testid="stExpander"] summary {
-        font-weight: 700 !important;
-        color: #475569 !important;
-        padding: 10px 14px !important;
-        border-radius: 10px !important;
+        direction: rtl !important;
+        text-align: right !important;
+        display: flex !important;
+        flex-direction: row-reverse !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 12px 18px !important;
+        font-weight: bold !important;
+        color: #334155 !important;
     }
-    div[data-testid="stExpander"] summary:hover {
-        color: #1e293b !important;
-        background: #f1f5f9 !important;
+    div[data-testid="stExpander"] summary svg {
+        margin: 0 !important;
     }
 
     @media (max-width: 768px) {
@@ -165,7 +180,6 @@ st.markdown("""
 
 DAILY_CAPACITY_LIMIT = 5
 
-# تابع کمکی برای فرمت و جداسازی ارقام با کاما
 def parse_int_price(val):
     if not val:
         return 0
@@ -247,8 +261,8 @@ month_names = [
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
 ]
 
-# ----------------- هدر و آمار کلیدی (رندر سازگار با وب‌کیت سافاری تبلت) -----------------
-st.title("🌸🌙Moonflo)")
+# ----------------- هدر و آمار کلیدی -----------------
+st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")
 
 total_orders = len(orders_list)
 total_revenue = sum(o.get("total_price", 0) for o in orders_list)
@@ -303,7 +317,7 @@ if st.session_state.show_new_order_modal or is_editing:
         current_order = next((o for o in orders_list if str(o["id"]) == str(st.session_state.editing_order_id)), None)
 
     st.markdown("---")
-    title_box = "✏️ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"
+    title_box = "✏️️ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"
     st.subheader(title_box)
 
     with st.form("order_form", clear_on_submit=False):
@@ -612,7 +626,7 @@ with tab_cards:
             for order in upcoming_orders:
                 render_order_card(order)
 
-        # بخش ۴: سفارش‌های گذشته (طراحی شیک و دکمه‌مانند)
+        # بخش ۴: سفارش‌های گذشته
         if past_orders:
             with st.expander(f"📦 بایگانی سفارش‌های گذشته و تحویل‌شده ({len(past_orders)} سفارش)"):
                 for order in past_orders:

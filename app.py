@@ -199,7 +199,7 @@ month_names = [
 ]
 
 # ----------------- هدر و آمار کلیدی -----------------
-st.title("🎛️ داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")
+st.title(" moonflo🌸🌙داشبورد مدیریت ")
 
 total_orders = len(orders_list)
 total_revenue = sum(o.get("total_price", 0) for o in orders_list)

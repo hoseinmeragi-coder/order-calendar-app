@@ -262,7 +262,7 @@ month_names = [
 ]
 
 # ----------------- هدر و آمار کلیدی -----------------
-st.title("🌸🌙Moonflo")
+st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")
 
 total_orders = len(orders_list)
 total_revenue = sum(o.get("total_price", 0) for o in orders_list)
@@ -384,7 +384,7 @@ if st.session_state.show_new_order_modal or is_editing:
                 f_delivery_str = delivery_jdate.strftime("%Y/%m/%d")
 
         with c_stat:
-            statuses = ["در انتظار تایید", "در حال آماده‌سازی", "تکمیل شده", "ارسال شده"]
+            statuses = ["در انتظار تایید", "در حال آماده‌‌سازی", "تکمیل شده", "ارسال شده"]
             stat_idx = statuses.index(current_order["status"]) if is_editing and current_order.get("status") in statuses else 0
             f_status = st.selectbox("وضعیت سفارش", statuses, index=stat_idx)
 
@@ -499,7 +499,6 @@ def render_order_card(order):
     }.get(order.get("status", "در انتظار تایید"), "status-pending")
 
     with st.container():
-        # در چیدمان RTL: ستون اول در راست و ستون دوم در چپ قرار می‌گیرد
         c_card, c_act = st.columns([4.2, 0.8])
         with c_card:
             prod_display = order.get("product_name") or "ثبت نشده"
@@ -574,11 +573,11 @@ def render_order_card(order):
 
 # ----------------- تب ۱: کارت‌های مشتریان -----------------
 with tab_cards:
-    # در محیط RTL: ستون اول در سمت راست و ستون دوم در سمت چپ قرار می‌گیرد
-    col_title, col_search = st.columns([3, 1])
-    with col_title:
+    # اصلاح جایگاه ستون‌ها تا تیتر در سمت راست و جستجو در چپ قرار بگیرد
+    col_t2, col_t1 = st.columns([1, 3])
+    with col_t1:
         st.subheader("📋 مدیریت پرونده‌های مشتریان")
-    with col_search:
+    with col_t2:
         search_query = st.text_input("🔍 جستجو (نام، فاکتور، شهر، آیدی، تماس)...", "")
 
     filtered_orders = orders_list

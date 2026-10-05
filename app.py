@@ -7,7 +7,7 @@ from google.oauth2.service_account import Credentials
 
 # تنظیمات اولیه صفحه
 st.set_page_config(
-    page_title="🌸🌙Moonflo",
+    page_title="مدیریت سفارش‌ها و تقویم ظرفیت (شمسی ابری)",
     page_icon="📅",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -262,7 +262,7 @@ month_names = [
 ]
 
 # ----------------- هدر و آمار کلیدی -----------------
-st.title("🌸🌙Moonflo")
+st.title(🌸🌙Moonflo")
 
 total_orders = len(orders_list)
 total_revenue = sum(o.get("total_price", 0) for o in orders_list)
@@ -317,7 +317,7 @@ if st.session_state.show_new_order_modal or is_editing:
         current_order = next((o for o in orders_list if str(o["id"]) == str(st.session_state.editing_order_id)), None)
 
     st.markdown("---")
-    title_box = "✏️️ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"
+    title_box = "✏ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"
     st.subheader(title_box)
 
     with st.form("order_form", clear_on_submit=False):
@@ -499,6 +499,7 @@ def render_order_card(order):
     }.get(order.get("status", "در انتظار تایید"), "status-pending")
 
     with st.container():
+        # در چیدمان RTL: ستون اول در راست و ستون دوم در چپ قرار می‌گیرد
         c_card, c_act = st.columns([4.2, 0.8])
         with c_card:
             prod_display = order.get("product_name") or "ثبت نشده"
@@ -573,10 +574,11 @@ def render_order_card(order):
 
 # ----------------- تب ۱: کارت‌های مشتریان -----------------
 with tab_cards:
-    col_t1, col_t2 = st.columns([3, 1])
-    with col_t1:
+    # در محیط RTL: ستون اول در سمت راست و ستون دوم در سمت چپ قرار می‌گیرد
+    col_title, col_search = st.columns([3, 1])
+    with col_title:
         st.subheader("📋 مدیریت پرونده‌های مشتریان")
-    with col_t2:
+    with col_search:
         search_query = st.text_input("🔍 جستجو (نام، فاکتور، شهر، آیدی، تماس)...", "")
 
     filtered_orders = orders_list

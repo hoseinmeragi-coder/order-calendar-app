@@ -345,7 +345,6 @@ if st.session_state.show_new_order_modal or is_editing:
             address_default = current_order.get("address", "") if is_editing else ""
             f_address = st.text_input("آدرس پستی کامل", value=address_default, placeholder="استان، شهر، خیابان، کوچه، پلاک، واحد")
 
-        # بدون فیلد وضعیت سفارش (تقسیم به ۳ ستون متناسب)
         c_prod, c_city, c_date = st.columns([1.5, 1.2, 2.3])
         
         with c_prod:
@@ -556,7 +555,7 @@ def render_order_card(order):
             )
             st.markdown(card_html, unsafe_allow_html=True)
 
-            # چک‌لیست مراحل سفارش با افزودن واریز بیعانه به عنوان اولین گزینه
+            # چک‌لیست مراحل سفارش
             st.markdown("<div class='order-steps-container'>", unsafe_allow_html=True)
             s0, s1, s2, s3, s4 = st.columns(5)
             with s0:
@@ -632,38 +631,24 @@ with tab_cards:
         ]
 
     if filtered_orders:
+        # مرتب‌سازی: اولویت با نزدیک‌ترین تاریخ تحویل؛ در صورت یکسان بودن، اولویت با سفارشی که زودتر ثبت شده است
         sorted_orders = sorted(
             filtered_orders,
             key=lambda x: (x.get("delivery_date", "9999/99/99"), x.get("order_created_at", "9999/99/99 99:99"))
         )
 
         today_str = today_jalali.strftime("%Y/%m/%d")
-        tomorrow_str = (today_jalali + jdatetime.timedelta(days=1)).strftime("%Y/%m/%d")
 
-        today_orders = [o for o in sorted_orders if o.get("delivery_date") == today_str]
-        tomorrow_orders = [o for o in sorted_orders if o.get("delivery_date") == tomorrow_str]
-        upcoming_orders = [o for o in sorted_orders if o.get("delivery_date", "") > tomorrow_str]
+        active_orders = [o for o in sorted_orders if o.get("delivery_date", "") >= today_str]
         past_orders = [o for o in sorted_orders if o.get("delivery_date", "") < today_str]
 
-        # بخش ۱: سفارش‌های فردا
-        if tomorrow_orders:
-            st.markdown(f"#### ⚡ سفارش‌های فردا ({tomorrow_str}) — {len(tomorrow_orders)} سفارش")
-            for order in tomorrow_orders:
+        # نمایش کلیه سفارش‌های فعال به ترتیب تاریخ تحویل و زمان ثبت
+        if active_orders:
+            st.markdown(f"#### 📦 لیست سفارش‌ها به ترتیب تاریخ تحویل و تقدم ثبت — {len(active_orders)} سفارش")
+            for order in active_orders:
                 render_order_card(order)
 
-        # بخش ۲: سفارش‌های امروز
-        if today_orders:
-            st.markdown(f"#### 🎯 تحویل‌های امروز ({today_str}) — {len(today_orders)} سفارش")
-            for order in today_orders:
-                render_order_card(order)
-
-        # بخش ۳: سفارش‌های پیش‌رو
-        if upcoming_orders:
-            st.markdown(f"#### 📅 سفارش‌های پیش‌رو و آتی — {len(upcoming_orders)} سفارش")
-            for order in upcoming_orders:
-                render_order_card(order)
-
-        # بخش ۴: سفارش‌های گذشته
+        # بایگانی سفارش‌های گذشته
         if past_orders:
             with st.expander(f"📦 بایگانی سفارش‌های گذشته و تحویل‌شده ({len(past_orders)} سفارش)"):
                 for order in past_orders:

@@ -62,16 +62,20 @@ st.markdown("""
     .order-card {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 18px;
+        border-radius: 12px 12px 0 0;
+        padding: 18px 18px 12px 18px;
+        border-right: 6px solid #3182ce;
+        border-bottom: 1px dashed #e2e8f0;
+    }
+    .order-steps-container {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-top: none;
+        border-radius: 0 0 12px 12px;
+        border-right: 6px solid #3182ce;
+        padding: 8px 16px 4px 16px;
         margin-bottom: 16px;
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-        border-right: 6px solid #3182ce;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .order-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.08);
     }
     .badge-status {
         display: inline-block;
@@ -135,7 +139,6 @@ st.markdown("""
         color: #c05621;
     }
 
-    /* اصلاح اختصاصی باکس کشویی سفارش‌های گذشته و تفکیک آیکون از متن */
     div[data-testid="stExpander"] {
         border: 1px solid #cbd5e1 !important;
         border-radius: 12px !important;
@@ -227,6 +230,11 @@ def load_orders():
             o["total_price"] = parse_int_price(o.get("total_price", 0)) or (o["initial_payment"] + o["remaining_payment"])
             if "order_created_at" not in o or not o["order_created_at"]:
                 o["order_created_at"] = "1400/01/01 00:00"
+            # تبدیل وضعیت مراحل به بولین
+            o["chk_photo"] = str(o.get("chk_photo", "False")).lower() == "true"
+            o["chk_settle"] = str(o.get("chk_settle", "False")).lower() == "true"
+            o["chk_pack"] = str(o.get("chk_pack", "False")).lower() == "true"
+            o["chk_post"] = str(o.get("chk_post", "False")).lower() == "true"
         return orders
     except Exception:
         return []
@@ -476,7 +484,11 @@ if st.session_state.show_new_order_modal or is_editing:
                     "total_price": f_init_pay + f_rem_pay,
                     "tracking_code": f_track_code if f_track_code else "ثبت نشده",
                     "product_desc": f_product_desc,
-                    "status": f_status
+                    "status": f_status,
+                    "chk_photo": False,
+                    "chk_settle": False,
+                    "chk_pack": False,
+                    "chk_post": False
                 }
                 orders_list.append(new_item)
                 save_orders(orders_list)
@@ -488,6 +500,14 @@ st.markdown("---")
 
 # ----------------- تب‌های برنامه -----------------
 tab_cards, tab_cal = st.tabs(["👥 کارت‌های مشتریان و سفارش‌ها", "📅 تقویم شمسی ظرفیت و زمان‌بندی"])
+
+# ----------------- تابع کمکی بروزرسانی چک‌باکس‌های مرحله -----------------
+def update_order_step(order_id, step_key, value):
+    for o in orders_list:
+        if str(o.get("id")) == str(order_id):
+            o[step_key] = value
+            break
+    save_orders(orders_list)
 
 # ----------------- تابع رندر کارت سفارش -----------------
 def render_order_card(order):
@@ -559,6 +579,39 @@ def render_order_card(order):
             )
             st.markdown(card_html, unsafe_allow_html=True)
 
+            # چک‌لیست ۴ مرحله‌ای برای هر سفارش
+            st.markdown("<div class='order-steps-container'>", unsafe_allow_html=True)
+            s1, s2, s3, s4 = st.columns(4)
+            with s1:
+                c_p = st.checkbox(
+                    "📷 ارسال عکس برای تسویه",
+                    value=bool(order.get("chk_photo", False)),
+                    key=f"p_{order['id']}",
+                    on_change=lambda oid=order['id'], k=f"p_{order['id']}": update_order_step(oid, "chk_photo", st.session_state[k])
+                )
+            with s2:
+                c_s = st.checkbox(
+                    "💳 تسویه",
+                    value=bool(order.get("chk_settle", False)),
+                    key=f"s_{order['id']}",
+                    on_change=lambda oid=order['id'], k=f"s_{order['id']}": update_order_step(oid, "chk_settle", st.session_state[k])
+                )
+            with s3:
+                c_pk = st.checkbox(
+                    "🎁 آماده‌سازی بسته",
+                    value=bool(order.get("chk_pack", False)),
+                    key=f"pk_{order['id']}",
+                    on_change=lambda oid=order['id'], k=f"pk_{order['id']}": update_order_step(oid, "chk_pack", st.session_state[k])
+                )
+            with s4:
+                c_pt = st.checkbox(
+                    "🚚 تحویل به پست",
+                    value=bool(order.get("chk_post", False)),
+                    key=f"pt_{order['id']}",
+                    on_change=lambda oid=order['id'], k=f"pt_{order['id']}": update_order_step(oid, "chk_post", st.session_state[k])
+                )
+            st.markdown("</div>", unsafe_allow_html=True)
+
         with c_act:
             st.write("")
             if st.button("✏️ ویرایش", key=f"edit_{order['id']}", use_container_width=True):
@@ -573,7 +626,6 @@ def render_order_card(order):
 
 # ----------------- تب ۱: کارت‌های مشتریان -----------------
 with tab_cards:
-    # اصلاح جایگاه ستون‌ها تا تیتر در سمت راست و جستجو در چپ قرار بگیرد
     col_t2, col_t1 = st.columns([1, 3])
     with col_t1:
         st.subheader("📋 مدیریت پرونده‌های مشتریان")

@@ -260,12 +260,18 @@ month_names = [
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
 ]
 
+# تابع کمکی برای محاسبه مانده واقعی بر اساس وضعیت تسویه
+def get_effective_remaining(o):
+    if o.get("chk_settle", False):
+        return 0
+    return o.get("remaining_payment", 0)
+
 # ----------------- هدر و آمار کلیدی -----------------
 st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")
 
 total_orders = len(orders_list)
 total_revenue = sum(o.get("total_price", 0) for o in orders_list)
-pending_balance = sum(o.get("remaining_payment", 0) for o in orders_list)
+pending_balance = sum(get_effective_remaining(o) for o in orders_list)
 
 m1, m2, m3, m4 = st.columns(4)
 with m1:
@@ -533,9 +539,12 @@ def render_order_card(order):
             addr_part = f"<div style='font-size:0.85rem; color:#4a5568; margin-top:6px;'>🏠 <b>آدرس:</b> {addr_val}</div>" if addr_val else ""
 
             init_p = order.get("initial_payment", 0)
-            rem_p = order.get("remaining_payment", 0)
+            
+            # در صورتی که چک‌باکس تسویه فعال باشد، مانده صفر لحاظ می‌شود
+            is_settled = bool(order.get("chk_settle", False))
+            rem_p = 0 if is_settled else order.get("remaining_payment", 0)
             tot_p = order.get("total_price", 0)
-            debt_color = "#e53e3e" if rem_p > 0 else "#38a169"
+            debt_color = "#38a169" if rem_p == 0 else "#e53e3e"
 
             desc_val = str(order.get("product_desc", "")).strip()
             desc_part = f"<div style='font-size:0.83rem; color:#718096; margin-top:6px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
@@ -566,7 +575,7 @@ def render_order_card(order):
             )
             st.markdown(card_html, unsafe_allow_html=True)
 
-            # چک‌لیست مراحل سفارش با واریز بیعانه
+            # چک‌لیست مراحل سفارش
             st.markdown("<div class='order-steps-container'>", unsafe_allow_html=True)
             s0, s1, s2, s3, s4 = st.columns(5)
             with s0:
@@ -642,7 +651,7 @@ with tab_cards:
         ]
 
     if filtered_orders:
-        # مرتب‌سازی: ابتدا تاریخ تحویل (صعودی)، سپس زمان ثبت سفارش (صعودی - زودتر ثبت شده‌ها اول)
+        # مرتب‌سازی: ابتدا تاریخ تحویل (صعودی)، سپس زمان ثبت سفارش (صعودی)
         sorted_orders = sorted(
             filtered_orders,
             key=lambda x: (x.get("delivery_date", "9999/99/99"), x.get("order_created_at", "9999/99/99 99:99"))
@@ -656,7 +665,7 @@ with tab_cards:
             if o.get("delivery_date", "") < today_str or is_order_fully_checked(o)
         ]
         
-        # سفارش‌های فعال روی صفحه: آینده/امروز که هنوز تمام مراحل چک‌باکس تکمیل نشده
+        # سفارش‌های فعال روی صفحه: آینده/امروز که هنوز تمام چک‌باکس‌ها تکمیل نشده‌اند
         active_orders = [
             o for o in sorted_orders 
             if o.get("delivery_date", "") >= today_str and not is_order_fully_checked(o)
@@ -681,7 +690,7 @@ with tab_cards:
             for order in orders_in_date:
                 render_order_card(order)
 
-        # سفارش‌های گذشته و سفارش‌های تکمیل‌شده در بایگانی
+        # سفارش‌های گذشته و تکمیل‌شده در بایگانی
         if past_orders:
             with st.expander(f"📦 بایگانی سفارش‌های گذشته و تکمیل‌شده ({len(past_orders)} سفارش)"):
                 for order in past_orders:
@@ -765,11 +774,12 @@ with tab_cal:
                 today_tag = " <span style='color:#3182ce; font-size:0.85rem;'>(امروز)</span>" if is_today else ""
                 st.markdown(f"**📌 {day} {month_names[current_month - 1]} {current_year}** {today_tag} — `{len(day_orders)}/{DAILY_CAPACITY_LIMIT} سفارش`", unsafe_allow_html=True)
                 for item in day_orders:
-                    badge_class = "badge-paid" if item.get("remaining_payment", 0) == 0 else "badge-debt"
+                    item_rem = get_effective_remaining(item)
+                    badge_class = "badge-paid" if item_rem == 0 else "badge-debt"
                     item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""
                     st.markdown(f"""
                     <div style='background:#f8fafc; border-right:4px solid #3182ce; padding:8px 12px; border-radius:6px; margin-bottom:6px; font-size:0.85rem;'>
-                        📦 <b>{item.get('customer_name')}{item_cid}</b> | مقصد: {item.get('destination_city')} | مانده: {item.get('remaining_payment', 0):,.0f} تومان
+                        📦 <b>{item.get('customer_name')}{item_cid}</b> | مقصد: {item.get('destination_city')} | مانده: {item_rem:,.0f} تومان
                     </div>
                     """, unsafe_allow_html=True)
                 st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
@@ -820,7 +830,8 @@ with tab_cal:
 
                         orders_html = ""
                         for item in day_orders[:3]:
-                            badge_class = "badge-paid" if item.get("remaining_payment", 0) == 0 else "badge-debt"
+                            item_rem = get_effective_remaining(item)
+                            badge_class = "badge-paid" if item_rem == 0 else "badge-debt"
                             p_title = item.get('product_name') or item.get('product_desc') or ''
                             item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""
                             orders_html += f"<div class='order-badge {badge_class}' title='{p_title}'>📦 {item['customer_name']}{item_cid} ({item['destination_city']})</div>"

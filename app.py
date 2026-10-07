@@ -555,7 +555,7 @@ def render_order_card(order):
             )
             st.markdown(card_html, unsafe_allow_html=True)
 
-            # چک‌لیست مراحل سفارش
+            # چک‌لیست مراحل سفارش با واریز بیعانه
             st.markdown("<div class='order-steps-container'>", unsafe_allow_html=True)
             s0, s1, s2, s3, s4 = st.columns(5)
             with s0:
@@ -631,7 +631,7 @@ with tab_cards:
         ]
 
     if filtered_orders:
-        # مرتب‌سازی: اولویت با نزدیک‌ترین تاریخ تحویل؛ در صورت یکسان بودن، اولویت با سفارشی که زودتر ثبت شده است
+        # مرتب‌سازی: ابتدا تاریخ تحویل (صعودی)، سپس زمان ثبت سفارش (صعودی - زودتر ثبت شده‌ها اول)
         sorted_orders = sorted(
             filtered_orders,
             key=lambda x: (x.get("delivery_date", "9999/99/99"), x.get("order_created_at", "9999/99/99 99:99"))
@@ -639,16 +639,27 @@ with tab_cards:
 
         today_str = today_jalali.strftime("%Y/%m/%d")
 
-        active_orders = [o for o in sorted_orders if o.get("delivery_date", "") >= today_str]
-        past_orders = [o for o in sorted_orders if o.get("delivery_date", "") < today_str]
+        # گروه‌بندی سفارش‌ها بر اساس تاریخ تحویل
+        date_groups = {}
+        for o in sorted_orders:
+            d = o.get("delivery_date", "نامشخص")
+            if d not in date_groups:
+                date_groups[d] = []
+            date_groups[d].append(o)
 
-        # نمایش کلیه سفارش‌های فعال به ترتیب تاریخ تحویل و زمان ثبت
-        if active_orders:
-            st.markdown(f"#### 📦 لیست سفارش‌ها به ترتیب تاریخ تحویل و تقدم ثبت — {len(active_orders)} سفارش")
-            for order in active_orders:
+        past_orders = [o for o in sorted_orders if o.get("delivery_date", "") < today_str]
+        active_dates = [d for d in date_groups.keys() if d >= today_str]
+
+        # نمایش هر تاریخ به عنوان یک بخش با سربرگ مجزا
+        for d in active_dates:
+            orders_in_date = date_groups[d]
+            is_today = (d == today_str)
+            today_tag = " — 🎯 تحویل امروز" if is_today else ""
+            st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — {len(orders_in_date)} سفارش")
+            for order in orders_in_date:
                 render_order_card(order)
 
-        # بایگانی سفارش‌های گذشته
+        # سفارش‌های گذشته
         if past_orders:
             with st.expander(f"📦 بایگانی سفارش‌های گذشته و تحویل‌شده ({len(past_orders)} سفارش)"):
                 for order in past_orders:

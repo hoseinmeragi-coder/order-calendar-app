@@ -77,17 +77,6 @@ st.markdown("""
         margin-bottom: 16px;
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
-    .badge-status {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: bold;
-    }
-    .status-completed { background: #c6f6d5; color: #22543d; }
-    .status-processing { background: #feebc8; color: #7b341e; }
-    .status-pending { background: #edf2f7; color: #4a5568; }
-    .status-sent { background: #bee3f8; color: #2a4365; }
 
     .calendar-cell {
         border: 1px solid #e2e8f0;
@@ -139,6 +128,7 @@ st.markdown("""
         color: #c05621;
     }
 
+    /* اصلاح اختصاصی باکس کشویی سفارش‌های گذشته و تفکیک آیکون از متن */
     div[data-testid="stExpander"] {
         border: 1px solid #cbd5e1 !important;
         border-radius: 12px !important;
@@ -230,7 +220,8 @@ def load_orders():
             o["total_price"] = parse_int_price(o.get("total_price", 0)) or (o["initial_payment"] + o["remaining_payment"])
             if "order_created_at" not in o or not o["order_created_at"]:
                 o["order_created_at"] = "1400/01/01 00:00"
-            # تبدیل وضعیت مراحل به بولین
+            # تبدیل وضعیت چک‌باکس‌ها به مقدار بولین
+            o["chk_deposit"] = str(o.get("chk_deposit", "False")).lower() == "true"
             o["chk_photo"] = str(o.get("chk_photo", "False")).lower() == "true"
             o["chk_settle"] = str(o.get("chk_settle", "False")).lower() == "true"
             o["chk_pack"] = str(o.get("chk_pack", "False")).lower() == "true"
@@ -354,7 +345,8 @@ if st.session_state.show_new_order_modal or is_editing:
             address_default = current_order.get("address", "") if is_editing else ""
             f_address = st.text_input("آدرس پستی کامل", value=address_default, placeholder="استان، شهر، خیابان، کوچه، پلاک، واحد")
 
-        c_prod, c_city, c_date, c_stat = st.columns([1.5, 1, 2, 1.2])
+        # بدون فیلد وضعیت سفارش (تقسیم به ۳ ستون متناسب)
+        c_prod, c_city, c_date = st.columns([1.5, 1.2, 2.3])
         
         with c_prod:
             prod_name_default = current_order.get("product_name", "") if is_editing else ""
@@ -390,11 +382,6 @@ if st.session_state.show_new_order_modal or is_editing:
             except ValueError:
                 delivery_jdate = jdatetime.date(f_year, f_month, 29)
                 f_delivery_str = delivery_jdate.strftime("%Y/%m/%d")
-
-        with c_stat:
-            statuses = ["در انتظار تایید", "در حال آماده‌‌سازی", "تکمیل شده", "ارسال شده"]
-            stat_idx = statuses.index(current_order["status"]) if is_editing and current_order.get("status") in statuses else 0
-            f_status = st.selectbox("وضعیت سفارش", statuses, index=stat_idx)
 
         cp1, cp2, cp3 = st.columns(3)
         with cp1:
@@ -456,8 +443,7 @@ if st.session_state.show_new_order_modal or is_editing:
                             "remaining_payment": f_rem_pay,
                             "total_price": f_init_pay + f_rem_pay,
                             "tracking_code": f_track_code if f_track_code else "ثبت نشده",
-                            "product_desc": f_product_desc,
-                            "status": f_status
+                            "product_desc": f_product_desc
                         })
                 save_orders(orders_list)
                 st.session_state.editing_order_id = None
@@ -484,7 +470,7 @@ if st.session_state.show_new_order_modal or is_editing:
                     "total_price": f_init_pay + f_rem_pay,
                     "tracking_code": f_track_code if f_track_code else "ثبت نشده",
                     "product_desc": f_product_desc,
-                    "status": f_status,
+                    "chk_deposit": False,
                     "chk_photo": False,
                     "chk_settle": False,
                     "chk_pack": False,
@@ -511,13 +497,6 @@ def update_order_step(order_id, step_key, value):
 
 # ----------------- تابع رندر کارت سفارش -----------------
 def render_order_card(order):
-    status_style = {
-        "در انتظار تایید": "status-pending",
-        "در حال آماده‌سازی": "status-processing",
-        "تکمیل شده": "status-completed",
-        "ارسال شده": "status-sent"
-    }.get(order.get("status", "در انتظار تایید"), "status-pending")
-
     with st.container():
         c_card, c_act = st.columns([4.2, 0.8])
         with c_card:
@@ -525,7 +504,6 @@ def render_order_card(order):
             c_name = order.get("customer_name") or "بدون نام"
             c_id_tag = f" ({order.get('customer_id')})" if order.get("customer_id") else ""
             inv_no = order.get("invoice_no") or "-"
-            c_status = order.get("status") or "نامشخص"
             city = order.get("destination_city") or "-"
             deliv_date = order.get("delivery_date") or "-"
             track_no = order.get("tracking_code") or "-"
@@ -556,7 +534,6 @@ def render_order_card(order):
                 f"<div class='order-card'>"
                 f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>"
                 f"<span style='font-weight:bold; font-size:1.15rem; color:#2d3748;'>👤 {c_name}{c_id_tag} <span style='font-size:0.85rem; color:#718096;'>({inv_no})</span></span>"
-                f"<span class='badge-status {status_style}'>{c_status}</span>"
                 f"</div>"
                 f"<div style='display:flex; gap:20px; flex-wrap:wrap; font-size:0.9rem; color:#4a5568; margin-bottom:8px;'>"
                 f"<span>🏷️ <b>محصول:</b> {prod_display}</span>"
@@ -579,9 +556,16 @@ def render_order_card(order):
             )
             st.markdown(card_html, unsafe_allow_html=True)
 
-            # چک‌لیست ۴ مرحله‌ای برای هر سفارش
+            # چک‌لیست مراحل سفارش با افزودن واریز بیعانه به عنوان اولین گزینه
             st.markdown("<div class='order-steps-container'>", unsafe_allow_html=True)
-            s1, s2, s3, s4 = st.columns(4)
+            s0, s1, s2, s3, s4 = st.columns(5)
+            with s0:
+                c_d = st.checkbox(
+                    "💵 واریز بیعانه",
+                    value=bool(order.get("chk_deposit", False)),
+                    key=f"d_{order['id']}",
+                    on_change=lambda oid=order['id'], k=f"d_{order['id']}": update_order_step(oid, "chk_deposit", st.session_state[k])
+                )
             with s1:
                 c_p = st.checkbox(
                     "📷 ارسال عکس برای تسویه",

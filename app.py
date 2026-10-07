@@ -486,6 +486,16 @@ st.markdown("---")
 # ----------------- تب‌های برنامه -----------------
 tab_cards, tab_cal = st.tabs(["👥 کارت‌های مشتریان و سفارش‌ها", "📅 تقویم شمسی ظرفیت و زمان‌بندی"])
 
+# ----------------- تابع کمکی تشخیص تکمیل بودن همه مراحل -----------------
+def is_order_fully_checked(order):
+    return (
+        bool(order.get("chk_deposit", False)) and
+        bool(order.get("chk_photo", False)) and
+        bool(order.get("chk_settle", False)) and
+        bool(order.get("chk_pack", False)) and
+        bool(order.get("chk_post", False))
+    )
+
 # ----------------- تابع کمکی بروزرسانی چک‌باکس‌های مرحله -----------------
 def update_order_step(order_id, step_key, value):
     for o in orders_list:
@@ -493,6 +503,7 @@ def update_order_step(order_id, step_key, value):
             o[step_key] = value
             break
     save_orders(orders_list)
+    st.rerun()
 
 # ----------------- تابع رندر کارت سفارش -----------------
 def render_order_card(order):
@@ -639,16 +650,27 @@ with tab_cards:
 
         today_str = today_jalali.strftime("%Y/%m/%d")
 
-        # گروه‌بندی سفارش‌ها بر اساس تاریخ تحویل
+        # تفکیک سفارش‌های بایگانی: تاریخ گذشته یا تکمیل تمام چک‌باکس‌ها
+        past_orders = [
+            o for o in sorted_orders 
+            if o.get("delivery_date", "") < today_str or is_order_fully_checked(o)
+        ]
+        
+        # سفارش‌های فعال روی صفحه: آینده/امروز که هنوز تمام مراحل چک‌باکس تکمیل نشده
+        active_orders = [
+            o for o in sorted_orders 
+            if o.get("delivery_date", "") >= today_str and not is_order_fully_checked(o)
+        ]
+
+        # گروه‌بندی سفارش‌های فعال بر اساس تاریخ تحویل
         date_groups = {}
-        for o in sorted_orders:
+        for o in active_orders:
             d = o.get("delivery_date", "نامشخص")
             if d not in date_groups:
                 date_groups[d] = []
             date_groups[d].append(o)
 
-        past_orders = [o for o in sorted_orders if o.get("delivery_date", "") < today_str]
-        active_dates = [d for d in date_groups.keys() if d >= today_str]
+        active_dates = sorted(list(date_groups.keys()))
 
         # نمایش هر تاریخ به عنوان یک بخش با سربرگ مجزا
         for d in active_dates:
@@ -659,9 +681,9 @@ with tab_cards:
             for order in orders_in_date:
                 render_order_card(order)
 
-        # سفارش‌های گذشته
+        # سفارش‌های گذشته و سفارش‌های تکمیل‌شده در بایگانی
         if past_orders:
-            with st.expander(f"📦 بایگانی سفارش‌های گذشته و تحویل‌شده ({len(past_orders)} سفارش)"):
+            with st.expander(f"📦 بایگانی سفارش‌های گذشته و تکمیل‌شده ({len(past_orders)} سفارش)"):
                 for order in past_orders:
                     render_order_card(order)
 

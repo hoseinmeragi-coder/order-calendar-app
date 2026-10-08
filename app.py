@@ -511,8 +511,22 @@ def update_order_step(order_id, step_key, value):
     save_orders(orders_list)
     st.rerun()
 
+# ----------------- تابع کمکی بازگردانی سفارش از بایگانی -----------------
+def restore_archived_order(order_id):
+    today_str = today_jalali.strftime("%Y/%m/%d")
+    for o in orders_list:
+        if str(o.get("id")) == str(order_id):
+            # غیرفعال کردن آخرین چک‌باکس (تحویل به پست) جهت خروج از حالت تکمیل کامل
+            o["chk_post"] = False
+            # در صورتی که تاریخ تحویل در گذشته بوده است، تاریخ به امروز بروز می‌شود تا به صفحه فعال بازگردد
+            if o.get("delivery_date", "") < today_str:
+                o["delivery_date"] = today_str
+            break
+    save_orders(orders_list)
+    st.rerun()
+
 # ----------------- تابع رندر کارت سفارش -----------------
-def render_order_card(order, prefix="card"):
+def render_order_card(order, prefix="card", is_archived=False):
     with st.container():
         c_card, c_act = st.columns([4.2, 0.8])
         with c_card:
@@ -624,6 +638,10 @@ def render_order_card(order, prefix="card"):
 
         with c_act:
             st.write("")
+            if is_archived:
+                if st.button("↩️ بازگردانی", key=f"restore_{prefix}_{order['id']}", use_container_width=True):
+                    restore_archived_order(order["id"])
+
             if st.button("✏️ ویرایش", key=f"edit_{prefix}_{order['id']}", use_container_width=True):
                 st.session_state.editing_order_id = order["id"]
                 st.session_state.show_new_order_modal = False
@@ -695,13 +713,13 @@ with tab_cards:
             today_tag = " — 🎯 تحویل امروز" if is_today else ""
             st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — {len(orders_in_date)} سفارش")
             for idx, order in enumerate(orders_in_date):
-                render_order_card(order, prefix=f"act_{d}_{idx}")
+                render_order_card(order, prefix=f"act_{d}_{idx}", is_archived=False)
 
         # سفارش‌های گذشته و تکمیل‌شده در بایگانی
         if past_orders:
             with st.expander(f"📦 بایگانی سفارش‌های گذشته و تکمیل‌شده ({len(past_orders)} سفارش)"):
                 for idx, order in enumerate(past_orders):
-                    render_order_card(order, prefix=f"arch_{idx}")
+                    render_order_card(order, prefix=f"arch_{idx}", is_archived=True)
 
         st.markdown("---")
         df_export = pd.DataFrame(orders_list)

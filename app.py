@@ -512,7 +512,7 @@ def update_order_step(order_id, step_key, value):
     st.rerun()
 
 # ----------------- تابع رندر کارت سفارش -----------------
-def render_order_card(order):
+def render_order_card(order, prefix="card"):
     with st.container():
         c_card, c_act = st.columns([4.2, 0.8])
         with c_card:
@@ -578,51 +578,58 @@ def render_order_card(order):
             # چک‌لیست مراحل سفارش
             st.markdown("<div class='order-steps-container'>", unsafe_allow_html=True)
             s0, s1, s2, s3, s4 = st.columns(5)
+            
+            k_d = f"d_{prefix}_{order['id']}"
+            k_p = f"p_{prefix}_{order['id']}"
+            k_s = f"s_{prefix}_{order['id']}"
+            k_pk = f"pk_{prefix}_{order['id']}"
+            k_pt = f"pt_{prefix}_{order['id']}"
+
             with s0:
                 c_d = st.checkbox(
                     "💵 واریز بیعانه",
                     value=bool(order.get("chk_deposit", False)),
-                    key=f"d_{order['id']}",
-                    on_change=lambda oid=order['id'], k=f"d_{order['id']}": update_order_step(oid, "chk_deposit", st.session_state[k])
+                    key=k_d,
+                    on_change=lambda oid=order['id'], k=k_d: update_order_step(oid, "chk_deposit", st.session_state[k])
                 )
             with s1:
                 c_p = st.checkbox(
                     "📷 ارسال عکس برای تسویه",
                     value=bool(order.get("chk_photo", False)),
-                    key=f"p_{order['id']}",
-                    on_change=lambda oid=order['id'], k=f"p_{order['id']}": update_order_step(oid, "chk_photo", st.session_state[k])
+                    key=k_p,
+                    on_change=lambda oid=order['id'], k=k_p: update_order_step(oid, "chk_photo", st.session_state[k])
                 )
             with s2:
                 c_s = st.checkbox(
                     "💳 تسویه",
                     value=bool(order.get("chk_settle", False)),
-                    key=f"s_{order['id']}",
-                    on_change=lambda oid=order['id'], k=f"s_{order['id']}": update_order_step(oid, "chk_settle", st.session_state[k])
+                    key=k_s,
+                    on_change=lambda oid=order['id'], k=k_s: update_order_step(oid, "chk_settle", st.session_state[k])
                 )
             with s3:
                 c_pk = st.checkbox(
                     "🎁 آماده‌سازی بسته",
                     value=bool(order.get("chk_pack", False)),
-                    key=f"pk_{order['id']}",
-                    on_change=lambda oid=order['id'], k=f"pk_{order['id']}": update_order_step(oid, "chk_pack", st.session_state[k])
+                    key=k_pk,
+                    on_change=lambda oid=order['id'], k=k_pk: update_order_step(oid, "chk_pack", st.session_state[k])
                 )
             with s4:
                 c_pt = st.checkbox(
                     "🚚 تحویل به پست",
                     value=bool(order.get("chk_post", False)),
-                    key=f"pt_{order['id']}",
-                    on_change=lambda oid=order['id'], k=f"pt_{order['id']}": update_order_step(oid, "chk_post", st.session_state[k])
+                    key=k_pt,
+                    on_change=lambda oid=order['id'], k=k_pt: update_order_step(oid, "chk_post", st.session_state[k])
                 )
             st.markdown("</div>", unsafe_allow_html=True)
 
         with c_act:
             st.write("")
-            if st.button("✏️ ویرایش", key=f"edit_{order['id']}", use_container_width=True):
+            if st.button("✏️ ویرایش", key=f"edit_{prefix}_{order['id']}", use_container_width=True):
                 st.session_state.editing_order_id = order["id"]
                 st.session_state.show_new_order_modal = False
                 st.rerun()
 
-            if st.button("🗑️ حذف", key=f"del_{order['id']}", use_container_width=True):
+            if st.button("🗑️ حذف", key=f"del_{prefix}_{order['id']}", use_container_width=True):
                 updated = [o for o in orders_list if str(o["id"]) != str(order["id"])]
                 save_orders(updated)
                 st.rerun()
@@ -687,14 +694,14 @@ with tab_cards:
             is_today = (d == today_str)
             today_tag = " — 🎯 تحویل امروز" if is_today else ""
             st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — {len(orders_in_date)} سفارش")
-            for order in orders_in_date:
-                render_order_card(order)
+            for idx, order in enumerate(orders_in_date):
+                render_order_card(order, prefix=f"act_{d}_{idx}")
 
         # سفارش‌های گذشته و تکمیل‌شده در بایگانی
         if past_orders:
             with st.expander(f"📦 بایگانی سفارش‌های گذشته و تکمیل‌شده ({len(past_orders)} سفارش)"):
-                for order in past_orders:
-                    render_order_card(order)
+                for idx, order in enumerate(past_orders):
+                    render_order_card(order, prefix=f"arch_{idx}")
 
         st.markdown("---")
         df_export = pd.DataFrame(orders_list)

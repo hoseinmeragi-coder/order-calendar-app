@@ -239,9 +239,8 @@ def save_orders(orders):
         df = pd.DataFrame(orders).fillna("").astype(str)
         all_data = [df.columns.tolist()] + df.values.tolist()
         
-        # انجام به‌روزرسانی سلول‌ها بدون clear اولیه جهت ایمنی داده‌ها
-        ws.clear()[cite: 1]
-        ws.update(range_name="A1", values=all_data)[cite: 1]
+        ws.clear()
+        ws.update(range_name="A1", values=all_data)
         st.cache_data.clear()
     except Exception as e:
         st.error(f"خطا در همگام‌سازی ابری: {e}")
@@ -250,255 +249,255 @@ def save_orders(orders):
 def load_orders():
     try:
         ws = get_worksheet()
-        vals = ws.get_all_values()[cite: 1]
+        vals = ws.get_all_values()
         if not vals or len(vals) < 2:
             return []
-        df = pd.DataFrame(vals[1:], columns=vals[0])[cite: 1]
-        orders = df.to_dict(orient="records")[cite: 1]
+        df = pd.DataFrame(vals[1:], columns=vals[0])
+        orders = df.to_dict(orient="records")
         
         numeric_ids = []
         for o in orders:
-            val = str(o.get("id", "")).strip()[cite: 1]
+            val = str(o.get("id", "")).strip()
             if val.isdigit():
-                numeric_ids.append(int(val))[cite: 1]
-        current_max_id = max(numeric_ids) if numeric_ids else 0[cite: 1]
+                numeric_ids.append(int(val))
+        current_max_id = max(numeric_ids) if numeric_ids else 0
 
         seen_ids = set()
         has_duplicates = False
         for o in orders:
-            raw_id = str(o.get("id", "")).strip()[cite: 1]
+            raw_id = str(o.get("id", "")).strip()
             if not raw_id or raw_id in seen_ids:
-                current_max_id += 1[cite: 1]
-                o["id"] = current_max_id[cite: 1]
-                has_duplicates = True[cite: 1]
+                current_max_id += 1
+                o["id"] = current_max_id
+                has_duplicates = True
             else:
-                o["id"] = int(raw_id) if raw_id.isdigit() else raw_id[cite: 1]
-                seen_ids.add(str(o["id"]))[cite: 1]
+                o["id"] = int(raw_id) if raw_id.isdigit() else raw_id
+                seen_ids.add(str(o["id"]))
 
-            o["phone"] = clean_phone_str(o.get("phone", ""))[cite: 1]
-            o["emergency_phone"] = clean_phone_str(o.get("emergency_phone", ""))[cite: 1]
-            o["postal_code"] = clean_phone_str(o.get("postal_code", ""))[cite: 1]
+            o["phone"] = clean_phone_str(o.get("phone", ""))
+            o["emergency_phone"] = clean_phone_str(o.get("emergency_phone", ""))
+            o["postal_code"] = clean_phone_str(o.get("postal_code", ""))
 
-            o["initial_payment"] = parse_int_price(o.get("initial_payment", 0))[cite: 1]
-            o["remaining_payment"] = parse_int_price(o.get("remaining_payment", 0))[cite: 1]
-            o["total_price"] = parse_int_price(o.get("total_price", 0)) or (o["initial_payment"] + o["remaining_payment"])[cite: 1]
+            o["initial_payment"] = parse_int_price(o.get("initial_payment", 0))
+            o["remaining_payment"] = parse_int_price(o.get("remaining_payment", 0))
+            o["total_price"] = parse_int_price(o.get("total_price", 0)) or (o["initial_payment"] + o["remaining_payment"])
             if "order_created_at" not in o or not o["order_created_at"]:
-                o["order_created_at"] = "1400/01/01 00:00"[cite: 1]
+                o["order_created_at"] = "1400/01/01 00:00"
 
-            o["chk_deposit"] = _is_truthy(o.get("chk_deposit", False))[cite: 1]
-            o["chk_photo"] = _is_truthy(o.get("chk_photo", False))[cite: 1]
-            o["chk_settle"] = _is_truthy(o.get("chk_settle", False))[cite: 1]
-            o["chk_pack"] = _is_truthy(o.get("chk_pack", False))[cite: 1]
-            o["chk_post"] = _is_truthy(o.get("chk_post", False))[cite: 1]
+            o["chk_deposit"] = _is_truthy(o.get("chk_deposit", False))
+            o["chk_photo"] = _is_truthy(o.get("chk_photo", False))
+            o["chk_settle"] = _is_truthy(o.get("chk_settle", False))
+            o["chk_pack"] = _is_truthy(o.get("chk_pack", False))
+            o["chk_post"] = _is_truthy(o.get("chk_post", False))
             o["order_image"] = str(o.get("order_image", ""))
 
         if has_duplicates:
-            save_orders(orders)[cite: 1]
+            save_orders(orders)
 
         return orders
     except Exception as e:
         st.warning(f"عدم امکان خواندن اطلاعات شیت: {e}")
         return []
 
-orders_list = load_orders()[cite: 1]
+orders_list = load_orders()
 
 def get_next_id(orders):
-    n_ids = [int(o["id"]) for o in orders if str(o.get("id", "")).isdigit()][cite: 1]
-    return (max(n_ids) if n_ids else 0) + 1[cite: 1]
+    n_ids = [int(o["id"]) for o in orders if str(o.get("id", "")).isdigit()]
+    return (max(n_ids) if n_ids else 0) + 1
 
 def get_next_invoice_no(orders):
-    max_inv = 1000[cite: 1]
+    max_inv = 1000
     for o in orders:
-        inv = str(o.get("invoice_no", "")).strip()[cite: 1]
-        if inv.startswith("INV-") and inv[4:].isdigit():[cite: 1]
-            max_inv = max(max_inv, int(inv[4:]))[cite: 1]
-    return f"INV-{max_inv + 1}"[cite: 1]
+        inv = str(o.get("invoice_no", "")).strip()
+        if inv.startswith("INV-") and inv[4:].isdigit():
+            max_inv = max(max_inv, int(inv[4:]))
+    return f"INV-{max_inv + 1}"
 
 if "show_new_order_modal" not in st.session_state:
-    st.session_state.show_new_order_modal = False[cite: 1]
+    st.session_state.show_new_order_modal = False
 
 if "editing_order_id" not in st.session_state:
-    st.session_state.editing_order_id = None[cite: 1]
+    st.session_state.editing_order_id = None
 
-today_jalali = jdatetime.date.today()[cite: 1]
+today_jalali = jdatetime.date.today()
 
 month_names = [
     "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
-][cite: 1]
+]
 
 def get_effective_remaining(o):
-    if _is_truthy(o.get("chk_settle", False)):[cite: 1]
-        return 0[cite: 1]
-    return o.get("remaining_payment", 0)[cite: 1]
+    if _is_truthy(o.get("chk_settle", False)):
+        return 0
+    return o.get("remaining_payment", 0)
 
 # ----------------- هدر و آمار کلیدی -----------------
-st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")[cite: 1]
+st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")
 
-total_orders = len(orders_list)[cite: 1]
-total_revenue = sum(o.get("total_price", 0) for o in orders_list)[cite: 1]
-pending_balance = sum(get_effective_remaining(o) for o in orders_list)[cite: 1]
+total_orders = len(orders_list)
+total_revenue = sum(o.get("total_price", 0) for o in orders_list)
+pending_balance = sum(get_effective_remaining(o) for o in orders_list)
 
-m1, m2, m3, m4 = st.columns(4)[cite: 1]
+m1, m2, m3, m4 = st.columns(4)
 with m1:
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-label">کل سفارش‌ها</div>
         <div class="metric-value">{total_orders} عدد</div>
     </div>
-    """, unsafe_allow_html=True)[cite: 1]
+    """, unsafe_allow_html=True)
 with m2:
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-label">مجموع ارزش سفارش‌ها</div>
         <div class="metric-value">{total_revenue:,.0f} تومان</div>
     </div>
-    """, unsafe_allow_html=True)[cite: 1]
+    """, unsafe_allow_html=True)
 with m3:
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-label">مجموع مانده حساب‌ها</div>
         <div class="metric-value">{pending_balance:,.0f} تومان</div>
     </div>
-    """, unsafe_allow_html=True)[cite: 1]
+    """, unsafe_allow_html=True)
 with m4:
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-label">سقف ظرفیت روزانه</div>
         <div class="metric-value">{DAILY_CAPACITY_LIMIT} سفارش</div>
     </div>
-    """, unsafe_allow_html=True)[cite: 1]
+    """, unsafe_allow_html=True)
 
-st.markdown("---")[cite: 1]
+st.markdown("---")
 
 # ----------------- دکمه ثبت سفارش جدید -----------------
-col_btn, _ = st.columns([1.5, 4])[cite: 1]
+col_btn, _ = st.columns([1.5, 4])
 with col_btn:
-    btn_text = "❌ بستن فرم ثبت سفارش" if st.session_state.show_new_order_modal else "✨ افزودن و ثبت سفارش جدید"[cite: 1]
-    if st.button(btn_text, use_container_width=True, type="primary"):[cite: 1]
-        st.session_state.show_new_order_modal = not st.session_state.show_new_order_modal[cite: 1]
-        st.session_state.editing_order_id = None[cite: 1]
-        st.rerun()[cite: 1]
+    btn_text = "❌ بستن فرم ثبت سفارش" if st.session_state.show_new_order_modal else "✨ افزودن و ثبت سفارش جدید"
+    if st.button(btn_text, use_container_width=True, type="primary"):
+        st.session_state.show_new_order_modal = not st.session_state.show_new_order_modal
+        st.session_state.editing_order_id = None
+        st.rerun()
 
 # ----------------- بخش ثبت / ویرایش سفارش -----------------
-is_editing = st.session_state.editing_order_id is not None[cite: 1]
+is_editing = st.session_state.editing_order_id is not None
 if st.session_state.show_new_order_modal or is_editing:
-    current_order = None[cite: 1]
+    current_order = None
     if is_editing:
-        current_order = next((o for o in orders_list if str(o["id"]) == str(st.session_state.editing_order_id)), None)[cite: 1]
+        current_order = next((o for o in orders_list if str(o["id"]) == str(st.session_state.editing_order_id)), None)
 
-    st.markdown("---")[cite: 1]
-    title_box = "✏ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"[cite: 1]
-    st.subheader(title_box)[cite: 1]
+    st.markdown("---")
+    title_box = "✏ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"
+    st.subheader(title_box)
 
-    with st.form("order_form", clear_on_submit=False):[cite: 1]
-        c1, c2, c3, c4 = st.columns(4)[cite: 1]
+    with st.form("order_form", clear_on_submit=False):
+        c1, c2, c3, c4 = st.columns(4)
         with c1:
-            inv_default = current_order["invoice_no"] if is_editing else get_next_invoice_no(orders_list)[cite: 1]
-            f_invoice_no = st.text_input("شماره فاکتور", value=inv_default)[cite: 1]
+            inv_default = current_order["invoice_no"] if is_editing else get_next_invoice_no(orders_list)
+            f_invoice_no = st.text_input("شماره فاکتور", value=inv_default)
         with c2:
-            c_name_default = current_order["customer_name"] if is_editing else ""[cite: 1]
-            f_customer_name = st.text_input("نام و نام خانوادگی مشتری", value=c_name_default, placeholder="مثلاً: علیرضا محمدی")[cite: 1]
+            c_name_default = current_order["customer_name"] if is_editing else ""
+            f_customer_name = st.text_input("نام و نام خانوادگی مشتری", value=c_name_default, placeholder="مثلاً: علیرضا محمدی")
         with c3:
-            phone_default = current_order.get("phone", "") if is_editing else ""[cite: 1]
-            f_phone = st.text_input("شماره تماس", value=phone_default, placeholder="مثلاً: 09123456789")[cite: 1]
+            phone_default = current_order.get("phone", "") if is_editing else ""
+            f_phone = st.text_input("شماره تماس", value=phone_default, placeholder="مثلاً: 09123456789")
         with c4:
-            emergency_phone_default = current_order.get("emergency_phone", "") if is_editing else ""[cite: 1]
-            f_emergency_phone = st.text_input("شماره تماس اضطراری", value=emergency_phone_default, placeholder="شماره تماس دوم یا معرف")[cite: 1]
+            emergency_phone_default = current_order.get("emergency_phone", "") if is_editing else ""
+            f_emergency_phone = st.text_input("شماره تماس اضطراری", value=emergency_phone_default, placeholder="شماره تماس دوم یا معرف")
 
-        c_info1, c_info2, c_info3 = st.columns([1.5, 1.5, 3])[cite: 1]
+        c_info1, c_info2, c_info3 = st.columns([1.5, 1.5, 3])
         with c_info1:
-            c_id_default = current_order.get("customer_id", "") if is_editing else ""[cite: 1]
-            f_customer_id = st.text_input("آیدی / نام کاربری مشتری", value=c_id_default, placeholder="@username یا شناسه")[cite: 1]
+            c_id_default = current_order.get("customer_id", "") if is_editing else ""
+            f_customer_id = st.text_input("آیدی / نام کاربری مشتری", value=c_id_default, placeholder="@username یا شناسه")
         with c_info2:
-            postal_code_default = current_order.get("postal_code", "") if is_editing else ""[cite: 1]
-            f_postal_code = st.text_input("کد پستی", value=postal_code_default, placeholder="کد پستی ۱۰ رقمی")[cite: 1]
+            postal_code_default = current_order.get("postal_code", "") if is_editing else ""
+            f_postal_code = st.text_input("کد پستی", value=postal_code_default, placeholder="کد پستی ۱۰ رقمی")
         with c_info3:
-            address_default = current_order.get("address", "") if is_editing else ""[cite: 1]
-            f_address = st.text_input("آدرس پستی کامل", value=address_default, placeholder="استان، شهر، خیابان، کوچه، پلاک، واحد")[cite: 1]
+            address_default = current_order.get("address", "") if is_editing else ""
+            f_address = st.text_input("آدرس پستی کامل", value=address_default, placeholder="استان، شهر، خیابان، کوچه، پلاک، واحد")
 
-        c_prod, c_city, c_date = st.columns([1.5, 1.2, 2.3])[cite: 1]
+        c_prod, c_city, c_date = st.columns([1.5, 1.2, 2.3])
         
         with c_prod:
-            prod_name_default = current_order.get("product_name", "") if is_editing else ""[cite: 1]
+            prod_name_default = current_order.get("product_name", "") if is_editing else ""
             f_product_name = st.text_input("نام محصول / مدل", value=prod_name_default, placeholder="مثلاً: باکس گل رز")
 
         with c_city:
-            city_default = current_order.get("destination_city", "") if is_editing else ""[cite: 1]
-            f_destination_city = st.text_input("شهر مقصد", value=city_default, placeholder="مثلاً: مشهد، تهران...")[cite: 1]
+            city_default = current_order.get("destination_city", "") if is_editing else ""
+            f_destination_city = st.text_input("شهر مقصد", value=city_default, placeholder="مثلاً: مشهد، تهران...")
 
         with c_date:
-            st.markdown("<p style='font-weight:600; margin-bottom:5px;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)[cite: 1]
-            cd_d, cd_m, cd_y = st.columns([1, 1.5, 1.2])[cite: 1]
+            st.markdown("<p style='font-weight:600; margin-bottom:5px;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)
+            cd_d, cd_m, cd_y = st.columns([1, 1.5, 1.2])
             
-            d_def, m_def, y_def = today_jalali.day, today_jalali.month, today_jalali.year[cite: 1]
-            if is_editing and current_order.get("delivery_date"):[cite: 1]
+            d_def, m_def, y_def = today_jalali.day, today_jalali.month, today_jalali.year
+            if is_editing and current_order.get("delivery_date"):
                 try:
-                    parts = current_order["delivery_date"].split("/")[cite: 1]
-                    y_def, m_def, d_def = int(parts[0]), int(parts[1]), int(parts[2])[cite: 1]
+                    parts = current_order["delivery_date"].split("/")
+                    y_def, m_def, d_def = int(parts[0]), int(parts[1]), int(parts[2])
                 except Exception:
                     pass
 
             with cd_d:
-                f_day = st.selectbox("روز", list(range(1, 32)), index=min(d_def - 1, 30))[cite: 1]
+                f_day = st.selectbox("روز", list(range(1, 32)), index=min(d_def - 1, 30))
             with cd_m:
-                f_month_name = st.selectbox("ماه", month_names, index=m_def - 1)[cite: 1]
-                f_month = month_names.index(f_month_name) + 1[cite: 1]
+                f_month_name = st.selectbox("ماه", month_names, index=m_def - 1)
+                f_month = month_names.index(f_month_name) + 1
             with cd_y:
-                f_year = st.selectbox("سال", [today_jalali.year - 1, today_jalali.year, today_jalali.year + 1], index=1)[cite: 1]
+                f_year = st.selectbox("سال", [today_jalali.year - 1, today_jalali.year, today_jalali.year + 1], index=1)
 
             try:
-                delivery_jdate = jdatetime.date(f_year, f_month, f_day)[cite: 1]
-                f_delivery_str = delivery_jdate.strftime("%Y/%m/%d")[cite: 1]
+                delivery_jdate = jdatetime.date(f_year, f_month, f_day)
+                f_delivery_str = delivery_jdate.strftime("%Y/%m/%d")
             except ValueError:
-                delivery_jdate = jdatetime.date(f_year, f_month, 29)[cite: 1]
-                f_delivery_str = delivery_jdate.strftime("%Y/%m/%d")[cite: 1]
+                delivery_jdate = jdatetime.date(f_year, f_month, 29)
+                f_delivery_str = delivery_jdate.strftime("%Y/%m/%d")
 
-        cp1, cp2, cp3 = st.columns(3)[cite: 1]
+        cp1, cp2, cp3 = st.columns(3)
         with cp1:
-            init_val_num = int(current_order["initial_payment"]) if is_editing else 0[cite: 1]
-            init_val_str = f"{init_val_num:,}" if init_val_num > 0 else ""[cite: 1]
-            f_init_raw = st.text_input("واریزی اول / پیش‌پرداخت (تومان)", value=init_val_str, placeholder="مثلاً: 500,000")[cite: 1]
-            parsed_init = parse_int_price(f_init_raw)[cite: 1]
+            init_val_num = int(current_order["initial_payment"]) if is_editing else 0
+            init_val_str = f"{init_val_num:,}" if init_val_num > 0 else ""
+            f_init_raw = st.text_input("واریزی اول / پیش‌پرداخت (تومان)", value=init_val_str, placeholder="مثلاً: 500,000")
+            parsed_init = parse_int_price(f_init_raw)
             if parsed_init > 0:
-                st.caption(f"🔎 تفکیک‌شده: **{parsed_init:,}** تومان")[cite: 1]
+                st.caption(f"🔎 تفکیک‌شده: **{parsed_init:,}** تومان")
 
         with cp2:
-            rem_val_num = int(current_order["remaining_payment"]) if is_editing else 0[cite: 1]
-            rem_val_str = f"{rem_val_num:,}" if rem_val_num > 0 else ""[cite: 1]
-            f_rem_raw = st.text_input("مانده تسویه (تومان)", value=rem_val_str, placeholder="مثلاً: 250,000")[cite: 1]
-            parsed_rem = parse_int_price(f_rem_raw)[cite: 1]
+            rem_val_num = int(current_order["remaining_payment"]) if is_editing else 0
+            rem_val_str = f"{rem_val_num:,}" if rem_val_num > 0 else ""
+            f_rem_raw = st.text_input("مانده تسویه (تومان)", value=rem_val_str, placeholder="مثلاً: 250,000")
+            parsed_rem = parse_int_price(f_rem_raw)
             if parsed_rem > 0:
-                st.caption(f"🔎 تفکیک‌شده: **{parsed_rem:,}** تومان")[cite: 1]
+                st.caption(f"🔎 تفکیک‌شده: **{parsed_rem:,}** تومان")
 
         with cp3:
-            track_val = current_order.get("tracking_code", "") if is_editing else ""[cite: 1]
-            if track_val == "ثبت نشده":[cite: 1]
-                track_val = ""[cite: 1]
-            f_track_code = st.text_input("کد رهگیری پستی (اختیاری)", value=track_val, placeholder="کد رهگیری ۲۴ رقمی...")[cite: 1]
+            track_val = current_order.get("tracking_code", "") if is_editing else ""
+            if track_val == "ثبت نشده":
+                track_val = ""
+            f_track_code = st.text_input("کد رهگیری پستی (اختیاری)", value=track_val, placeholder="کد رهگیری ۲۴ رقمی...")
 
-        desc_val = current_order.get("product_desc", "") if is_editing else ""[cite: 1]
-        f_product_desc = st.text_area("شرح محصول و جزئیات ساخت", value=desc_val, placeholder="ابعاد، رنگ، متریال، نحوه بسته‌بندی...")[cite: 1]
+        desc_val = current_order.get("product_desc", "") if is_editing else ""
+        f_product_desc = st.text_area("شرح محصول و جزئیات ساخت", value=desc_val, placeholder="ابعاد، رنگ، متریال، نحوه بسته‌بندی...")
 
         # آپلود تصویر سفارش
         f_uploaded_image = st.file_uploader("🖼️ آپلود عکس سفارش مشتری (اختیاری)", type=["png", "jpg", "jpeg", "webp"])
 
-        col_sub, col_cancel = st.columns([1, 1])[cite: 1]
+        col_sub, col_cancel = st.columns([1, 1])
         with col_sub:
-            btn_submit_label = "💾 ذخیره تغییرات سفارش" if is_editing else "✅ تایید و ثبت نهایی سفارش"[cite: 1]
-            submitted = st.form_submit_button(btn_submit_label, use_container_width=True, type="primary")[cite: 1]
+            btn_submit_label = "💾 ذخیره تغییرات سفارش" if is_editing else "✅ تایید و ثبت نهایی سفارش"
+            submitted = st.form_submit_button(btn_submit_label, use_container_width=True, type="primary")
         with col_cancel:
-            cancelled = st.form_submit_button("انصراف", use_container_width=True)[cite: 1]
+            cancelled = st.form_submit_button("انصراف", use_container_width=True)
 
         if cancelled:
-            st.session_state.show_new_order_modal = False[cite: 1]
-            st.session_state.editing_order_id = None[cite: 1]
-            st.rerun()[cite: 1]
+            st.session_state.show_new_order_modal = False
+            st.session_state.editing_order_id = None
+            st.rerun()
 
         if submitted:
-            f_init_pay = parse_int_price(f_init_raw)[cite: 1]
-            f_rem_pay = parse_int_price(f_rem_raw)[cite: 1]
-            now_jalali = jdatetime.datetime.now().strftime("%Y/%m/%d %H:%M")[cite: 1]
+            f_init_pay = parse_int_price(f_init_raw)
+            f_rem_pay = parse_int_price(f_rem_raw)
+            now_jalali = jdatetime.datetime.now().strftime("%Y/%m/%d %H:%M")
             
             # فشرده‌سازی و تبدیل تصویر به Base64
             img_b64 = ""
@@ -509,7 +508,7 @@ if st.session_state.show_new_order_modal or is_editing:
 
             if is_editing:
                 for o in orders_list:
-                    if str(o["id"]) == str(current_order["id"]):[cite: 1]
+                    if str(o["id"]) == str(current_order["id"]):
                         o.update({
                             "invoice_no": f_invoice_no,
                             "customer_id": f_customer_id,
@@ -527,15 +526,15 @@ if st.session_state.show_new_order_modal or is_editing:
                             "tracking_code": f_track_code if f_track_code else "ثبت نشده",
                             "product_desc": f_product_desc,
                             "order_image": img_b64
-                        })[cite: 1]
+                        })
                         break
-                save_orders(orders_list)[cite: 1]
-                st.session_state.editing_order_id = None[cite: 1]
-                st.session_state.show_new_order_modal = False[cite: 1]
-                st.success("سفارش با موفقیت در فضای ابری ویرایش شد!")[cite: 1]
-                st.rerun()[cite: 1]
+                save_orders(orders_list)
+                st.session_state.editing_order_id = None
+                st.session_state.show_new_order_modal = False
+                st.success("سفارش با موفقیت در فضای ابری ویرایش شد!")
+                st.rerun()
             else:
-                new_id = get_next_id(orders_list)[cite: 1]
+                new_id = get_next_id(orders_list)
                 new_item = {
                     "id": new_id,
                     "invoice_no": f_invoice_no,
@@ -560,17 +559,17 @@ if st.session_state.show_new_order_modal or is_editing:
                     "chk_settle": False,
                     "chk_pack": False,
                     "chk_post": False
-                }[cite: 1]
-                orders_list.append(new_item)[cite: 1]
-                save_orders(orders_list)[cite: 1]
-                st.session_state.show_new_order_modal = False[cite: 1]
-                st.success(f"سفارش فاکتور {f_invoice_no} در فضای ابری ثبت شد!")[cite: 1]
-                st.rerun()[cite: 1]
+                }
+                orders_list.append(new_item)
+                save_orders(orders_list)
+                st.session_state.show_new_order_modal = False
+                st.success(f"سفارش فاکتور {f_invoice_no} در فضای ابری ثبت شد!")
+                st.rerun()
 
-st.markdown("---")[cite: 1]
+st.markdown("---")
 
 # ----------------- تب‌های برنامه -----------------
-tab_cards, tab_cal = st.tabs(["👥 کارت‌های مشتریان و سفارش‌ها", "📅 تقویم شمسی ظرفیت و زمان‌بندی"])[cite: 1]
+tab_cards, tab_cal = st.tabs(["👥 کارت‌های مشتریان و سفارش‌ها", "📅 تقویم شمسی ظرفیت و زمان‌بندی"])
 
 def is_order_fully_checked(order):
     return (
@@ -579,64 +578,64 @@ def is_order_fully_checked(order):
         _is_truthy(order.get("chk_settle", False)) and
         _is_truthy(order.get("chk_pack", False)) and
         _is_truthy(order.get("chk_post", False))
-    )[cite: 1]
+    )
 
 def update_order_step(order_id, step_key, value):
     for o in orders_list:
-        if str(o.get("id")) == str(order_id):[cite: 1]
-            o[step_key] = bool(value)[cite: 1]
+        if str(o.get("id")) == str(order_id):
+            o[step_key] = bool(value)
             break
-    save_orders(orders_list)[cite: 1]
-    st.cache_data.clear()[cite: 1]
-    st.rerun()[cite: 1]
+    save_orders(orders_list)
+    st.cache_data.clear()
+    st.rerun()
 
 def restore_archived_order(order_id):
-    today_str = today_jalali.strftime("%Y/%m/%d")[cite: 1]
+    today_str = today_jalali.strftime("%Y/%m/%d")
     for o in orders_list:
-        if str(o.get("id")) == str(order_id):[cite: 1]
-            o["chk_post"] = False[cite: 1]
-            if str(o.get("delivery_date", "")) < today_str:[cite: 1]
-                o["delivery_date"] = today_str[cite: 1]
+        if str(o.get("id")) == str(order_id):
+            o["chk_post"] = False
+            if str(o.get("delivery_date", "")) < today_str:
+                o["delivery_date"] = today_str
             break
-    save_orders(orders_list)[cite: 1]
-    st.cache_data.clear()[cite: 1]
-    st.rerun()[cite: 1]
+    save_orders(orders_list)
+    st.cache_data.clear()
+    st.rerun()
 
 def render_order_card(order, prefix="card", is_archived=False):
-    with st.container():[cite: 1]
-        c_card, c_act = st.columns([4.2, 0.8])[cite: 1]
+    with st.container():
+        c_card, c_act = st.columns([4.2, 0.8])
         with c_card:
-            prod_display = order.get("product_name") or "ثبت نشده"[cite: 1]
-            c_name = order.get("customer_name") or "بدون نام"[cite: 1]
-            c_id_tag = f" ({order.get('customer_id')})" if order.get("customer_id") else ""[cite: 1]
-            inv_no = order.get("invoice_no") or "-"[cite: 1]
-            city = order.get("destination_city") or "-"[cite: 1]
-            deliv_date = order.get("delivery_date") or "-"[cite: 1]
-            track_no = order.get("tracking_code") or "-"[cite: 1]
-            created_at = order.get("order_created_at") or "-"[cite: 1]
+            prod_display = order.get("product_name") or "ثبت نشده"
+            c_name = order.get("customer_name") or "بدون نام"
+            c_id_tag = f" ({order.get('customer_id')})" if order.get("customer_id") else ""
+            inv_no = order.get("invoice_no") or "-"
+            city = order.get("destination_city") or "-"
+            deliv_date = order.get("delivery_date") or "-"
+            track_no = order.get("tracking_code") or "-"
+            created_at = order.get("order_created_at") or "-"
             
-            phone_val = str(order.get("phone", "")).strip()[cite: 1]
-            cid_val = str(order.get("customer_id", "")).strip()[cite: 1]
-            contact_display = phone_val if phone_val else (cid_val if cid_val else "-")[cite: 1]
+            phone_val = str(order.get("phone", "")).strip()
+            cid_val = str(order.get("customer_id", "")).strip()
+            contact_display = phone_val if phone_val else (cid_val if cid_val else "-")
             
-            em_val = str(order.get("emergency_phone", "")).strip()[cite: 1]
-            em_part = f"<span>🚨 <b>اضطراری:</b> {em_val}</span>" if em_val else ""[cite: 1]
+            em_val = str(order.get("emergency_phone", "")).strip()
+            em_part = f"<span>🚨 <b>اضطراری:</b> {em_val}</span>" if em_val else ""
 
-            post_val = str(order.get("postal_code", "")).strip()[cite: 1]
-            post_part = f"<span>📮 <b>کد پستی:</b> {post_val}</span>" if post_val else ""[cite: 1]
+            post_val = str(order.get("postal_code", "")).strip()
+            post_part = f"<span>📮 <b>کد پستی:</b> {post_val}</span>" if post_val else ""
 
-            addr_val = str(order.get("address", "")).strip()[cite: 1]
-            addr_part = f"<div style='font-size:0.85rem; color:#4a5568; margin-top:6px;'>🏠 <b>آدرس:</b> {addr_val}</div>" if addr_val else ""[cite: 1]
+            addr_val = str(order.get("address", "")).strip()
+            addr_part = f"<div style='font-size:0.85rem; color:#4a5568; margin-top:6px;'>🏠 <b>آدرس:</b> {addr_val}</div>" if addr_val else ""
 
-            init_p = order.get("initial_payment", 0)[cite: 1]
+            init_p = order.get("initial_payment", 0)
             
-            is_settled = _is_truthy(order.get("chk_settle", False))[cite: 1]
-            rem_p = 0 if is_settled else order.get("remaining_payment", 0)[cite: 1]
-            tot_p = order.get("total_price", 0)[cite: 1]
-            debt_color = "#38a169" if rem_p == 0 else "#e53e3e"[cite: 1]
+            is_settled = _is_truthy(order.get("chk_settle", False))
+            rem_p = 0 if is_settled else order.get("remaining_payment", 0)
+            tot_p = order.get("total_price", 0)
+            debt_color = "#38a169" if rem_p == 0 else "#e53e3e"
 
-            desc_val = str(order.get("product_desc", "")).strip()[cite: 1]
-            desc_part = f"<div style='font-size:0.83rem; color:#718096; margin-top:6px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""[cite: 1]
+            desc_val = str(order.get("product_desc", "")).strip()
+            desc_part = f"<div style='font-size:0.83rem; color:#718096; margin-top:6px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
 
             # تصویر فشرده سفارش
             img_val = str(order.get("order_image", "")).strip()
@@ -669,17 +668,17 @@ def render_order_card(order, prefix="card", is_archived=False):
                 f"{img_html}"
                 f"</div>"
             )
-            st.markdown(card_html, unsafe_allow_html=True)[cite: 1]
+            st.markdown(card_html, unsafe_allow_html=True)
 
             # چک‌لیست مراحل سفارش
-            st.markdown("<div class='order-steps-container'>", unsafe_allow_html=True)[cite: 1]
-            s0, s1, s2, s3, s4 = st.columns(5)[cite: 1]
+            st.markdown("<div class='order-steps-container'>", unsafe_allow_html=True)
+            s0, s1, s2, s3, s4 = st.columns(5)
             
-            k_d = f"d_{prefix}_{order['id']}"[cite: 1]
-            k_p = f"p_{prefix}_{order['id']}"[cite: 1]
-            k_s = f"s_{prefix}_{order['id']}"[cite: 1]
-            k_pk = f"pk_{prefix}_{order['id']}"[cite: 1]
-            k_pt = f"pt_{prefix}_{order['id']}"[cite: 1]
+            k_d = f"d_{prefix}_{order['id']}"
+            k_p = f"p_{prefix}_{order['id']}"
+            k_s = f"s_{prefix}_{order['id']}"
+            k_pk = f"pk_{prefix}_{order['id']}"
+            k_pt = f"pt_{prefix}_{order['id']}"
 
             with s0:
                 st.checkbox(
@@ -687,62 +686,62 @@ def render_order_card(order, prefix="card", is_archived=False):
                     value=_is_truthy(order.get("chk_deposit", False)),
                     key=k_d,
                     on_change=lambda oid=order['id'], k=k_d: update_order_step(oid, "chk_deposit", st.session_state[k])
-                )[cite: 1]
+                )
             with s1:
                 st.checkbox(
                     "📷 ارسال عکس برای تسویه",
                     value=_is_truthy(order.get("chk_photo", False)),
                     key=k_p,
                     on_change=lambda oid=order['id'], k=k_p: update_order_step(oid, "chk_photo", st.session_state[k])
-                )[cite: 1]
+                )
             with s2:
                 st.checkbox(
                     "💳 تسویه",
                     value=_is_truthy(order.get("chk_settle", False)),
                     key=k_s,
                     on_change=lambda oid=order['id'], k=k_s: update_order_step(oid, "chk_settle", st.session_state[k])
-                )[cite: 1]
+                )
             with s3:
                 st.checkbox(
                     "🎁 آماده‌سازی بسته",
                     value=_is_truthy(order.get("chk_pack", False)),
                     key=k_pk,
                     on_change=lambda oid=order['id'], k=k_pk: update_order_step(oid, "chk_pack", st.session_state[k])
-                )[cite: 1]
+                )
             with s4:
                 st.checkbox(
                     "🚚 تحویل به پست",
                     value=_is_truthy(order.get("chk_post", False)),
                     key=k_pt,
                     on_change=lambda oid=order['id'], k=k_pt: update_order_step(oid, "chk_post", st.session_state[k])
-                )[cite: 1]
-            st.markdown("</div>", unsafe_allow_html=True)[cite: 1]
+                )
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with c_act:
-            st.write("")[cite: 1]
+            st.write("")
             if is_archived:
-                if st.button("↩️ بازگردانی", key=f"restore_{prefix}_{order['id']}", use_container_width=True):[cite: 1]
-                    restore_archived_order(order["id"])[cite: 1]
+                if st.button("↩️ بازگردانی", key=f"restore_{prefix}_{order['id']}", use_container_width=True):
+                    restore_archived_order(order["id"])
 
-            if st.button("✏️ ویرایش", key=f"edit_{prefix}_{order['id']}", use_container_width=True):[cite: 1]
-                st.session_state.editing_order_id = order["id"][cite: 1]
-                st.session_state.show_new_order_modal = False[cite: 1]
-                st.rerun()[cite: 1]
+            if st.button("✏️ ویرایش", key=f"edit_{prefix}_{order['id']}", use_container_width=True):
+                st.session_state.editing_order_id = order["id"]
+                st.session_state.show_new_order_modal = False
+                st.rerun()
 
-            if st.button("🗑️ حذف", key=f"del_{prefix}_{order['id']}", use_container_width=True):[cite: 1]
-                updated = [o for o in orders_list if str(o["id"]) != str(order["id"])][cite: 1]
-                save_orders(updated)[cite: 1]
-                st.rerun()[cite: 1]
+            if st.button("🗑️ حذف", key=f"del_{prefix}_{order['id']}", use_container_width=True):
+                updated = [o for o in orders_list if str(o["id"]) != str(order["id"])]
+                save_orders(updated)
+                st.rerun()
 
 # ----------------- تب ۱: کارت‌های مشتریان -----------------
-with tab_cards:[cite: 1]
-    col_t2, col_t1 = st.columns([1, 3])[cite: 1]
+with tab_cards:
+    col_t2, col_t1 = st.columns([1, 3])
     with col_t1:
-        st.subheader("📋 مدیریت پرونده‌های مشتریان")[cite: 1]
+        st.subheader("📋 مدیریت پرونده‌های مشتریان")
     with col_t2:
-        search_query = st.text_input("🔍 جستجو (نام، فاکتور، شهر، آیدی، تماس)...", "")[cite: 1]
+        search_query = st.text_input("🔍 جستجو (نام، فاکتور، شهر، آیدی، تماس)...", "")
 
-    filtered_orders = orders_list[cite: 1]
+    filtered_orders = orders_list
     if search_query:
         filtered_orders = [
             o for o in orders_list 
@@ -755,200 +754,200 @@ with tab_cards:[cite: 1]
             or search_query in str(o.get("postal_code", ""))
             or search_query in str(o.get("address", ""))
             or search_query in str(o.get("product_name", ""))
-        ][cite: 1]
+        ]
 
     if filtered_orders:
         sorted_orders = sorted(
             filtered_orders,
             key=lambda x: (str(x.get("delivery_date", "9999/99/99")), str(x.get("order_created_at", "9999/99/99 99:99")))
-        )[cite: 1]
+        )
 
-        today_str = today_jalali.strftime("%Y/%m/%d")[cite: 1]
+        today_str = today_jalali.strftime("%Y/%m/%d")
 
         past_orders = [
             o for o in sorted_orders 
             if str(o.get("delivery_date", "")) < today_str or is_order_fully_checked(o)
-        ][cite: 1]
+        ]
         
         active_orders = [
             o for o in sorted_orders 
             if str(o.get("delivery_date", "")) >= today_str and not is_order_fully_checked(o)
-        ][cite: 1]
+        ]
 
         date_groups = {}
         for o in active_orders:
-            d = str(o.get("delivery_date", "نامشخص"))[cite: 1]
-            if d not in date_groups:[cite: 1]
-                date_groups[d] = [][cite: 1]
-            date_groups[d].append(o)[cite: 1]
+            d = str(o.get("delivery_date", "نامشخص"))
+            if d not in date_groups:
+                date_groups[d] = []
+            date_groups[d].append(o)
 
-        active_dates = sorted(list(date_groups.keys()))[cite: 1]
+        active_dates = sorted(list(date_groups.keys()))
 
         for d in active_dates:
-            orders_in_date = date_groups[d][cite: 1]
-            is_today = (d == today_str)[cite: 1]
-            today_tag = " — 🎯 تحویل امروز" if is_today else ""[cite: 1]
-            st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — {len(orders_in_date)} سفارش")[cite: 1]
-            for idx, order in enumerate(orders_in_date):[cite: 1]
-                render_order_card(order, prefix=f"act_{d.replace('/', '_')}_{idx}", is_archived=False)[cite: 1]
+            orders_in_date = date_groups[d]
+            is_today = (d == today_str)
+            today_tag = " — 🎯 تحویل امروز" if is_today else ""
+            st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — {len(orders_in_date)} سفارش")
+            for idx, order in enumerate(orders_in_date):
+                render_order_card(order, prefix=f"act_{d.replace('/', '_')}_{idx}", is_archived=False)
 
         if past_orders:
-            with st.expander(f"📦 بایگانی سفارش‌های گذشته و تکمیل‌شده ({len(past_orders)} سفارش)"):[cite: 1]
-                for idx, order in enumerate(past_orders):[cite: 1]
-                    render_order_card(order, prefix=f"arch_{idx}", is_archived=True)[cite: 1]
+            with st.expander(f"📦 بایگانی سفارش‌های گذشته و تکمیل‌شده ({len(past_orders)} سفارش)"):
+                for idx, order in enumerate(past_orders):
+                    render_order_card(order, prefix=f"arch_{idx}", is_archived=True)
 
-        st.markdown("---")[cite: 1]
-        df_export = pd.DataFrame(orders_list)[cite: 1]
-        csv_data = df_export.to_csv(index=False).encode('utf-8-sig')[cite: 1]
+        st.markdown("---")
+        df_export = pd.DataFrame(orders_list)
+        csv_data = df_export.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
             label="📥 دریافت فایل اکسل / CSV سفارش‌ها",
             data=csv_data,
             file_name="orders_data.csv",
             mime="text/csv"
-        )[cite: 1]
+        )
     else:
-        st.info("هیچ سفارشی یافت نشد.")[cite: 1]
+        st.info("هیچ سفارشی یافت نشد.")
 
 # ----------------- تب ۲: تقویم شمسی -----------------
-with tab_cal:[cite: 1]
+with tab_cal:
     if "cal_year" not in st.session_state:
-        st.session_state.cal_year = today_jalali.year[cite: 1]
+        st.session_state.cal_year = today_jalali.year
     if "cal_month" not in st.session_state:
-        st.session_state.cal_month = today_jalali.month[cite: 1]
+        st.session_state.cal_month = today_jalali.month
 
-    cal_top_col1, cal_top_col2 = st.columns([2.5, 1.5])[cite: 1]
+    cal_top_col1, cal_top_col2 = st.columns([2.5, 1.5])
     with cal_top_col2:
-        cal_view_mode = st.radio("نوع نمایش تقویم:", ["نمای ماهانه (شبکه‌ای)", "نمای روزانه موبایلی (لیست سفارش‌ها)"], horizontal=True)[cite: 1]
+        cal_view_mode = st.radio("نوع نمایش تقویم:", ["نمای ماهانه (شبکه‌ای)", "نمای روزانه موبایلی (لیست سفارش‌ها)"], horizontal=True)
 
-    col_nav1, col_nav2, col_nav3 = st.columns([1, 2, 1])[cite: 1]
+    col_nav1, col_nav2, col_nav3 = st.columns([1, 2, 1])
     
     with col_nav1:
-        if st.button("⬅ ماه قبل", use_container_width=True, key="prev_m"):[cite: 1]
-            if st.session_state.cal_month == 1:[cite: 1]
-                st.session_state.cal_month = 12[cite: 1]
-                st.session_state.cal_year -= 1[cite: 1]
+        if st.button("⬅ ماه قبل", use_container_width=True, key="prev_m"):
+            if st.session_state.cal_month == 1:
+                st.session_state.cal_month = 12
+                st.session_state.cal_year -= 1
             else:
-                st.session_state.cal_month -= 1[cite: 1]
-            st.rerun()[cite: 1]
+                st.session_state.cal_month -= 1
+            st.rerun()
 
     with col_nav2:
-        st.markdown(f"<h3 style='text-align: center; margin:0;'>{month_names[st.session_state.cal_month - 1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)[cite: 1]
+        st.markdown(f"<h3 style='text-align: center; margin:0;'>{month_names[st.session_state.cal_month - 1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)
 
     with col_nav3:
-        if st.button("ماه بعد ➡️", use_container_width=True, key="next_m"):[cite: 1]
-            if st.session_state.cal_month == 12:[cite: 1]
-                st.session_state.cal_month = 1[cite: 1]
-                st.session_state.cal_year += 1[cite: 1]
+        if st.button("ماه بعد ➡️", use_container_width=True, key="next_m"):
+            if st.session_state.cal_month == 12:
+                st.session_state.cal_month = 1
+                st.session_state.cal_year += 1
             else:
-                st.session_state.cal_month += 1[cite: 1]
-            st.rerun()[cite: 1]
+                st.session_state.cal_month += 1
+            st.rerun()
 
-    current_year = st.session_state.cal_year[cite: 1]
-    current_month = st.session_state.cal_month[cite: 1]
+    current_year = st.session_state.cal_year
+    current_month = st.session_state.cal_month
     
-    first_day_of_month = jdatetime.date(current_year, current_month, 1)[cite: 1]
-    start_weekday = first_day_of_month.weekday()[cite: 1]
+    first_day_of_month = jdatetime.date(current_year, current_month, 1)
+    start_weekday = first_day_of_month.weekday()
     
-    if current_month <= 6:[cite: 1]
-        days_in_month = 31[cite: 1]
-    elif current_month <= 11:[cite: 1]
-        days_in_month = 30[cite: 1]
+    if current_month <= 6:
+        days_in_month = 31
+    elif current_month <= 11:
+        days_in_month = 30
     else:
-        days_in_month = 30 if jdatetime.date(current_year, 1, 1).isleap() else 29[cite: 1]
+        days_in_month = 30 if jdatetime.date(current_year, 1, 1).isleap() else 29
 
-    orders_map = {}[cite: 1]
-    for o in orders_list:[cite: 1]
-        d = str(o.get("delivery_date", ""))[cite: 1]
-        if d not in orders_map:[cite: 1]
-            orders_map[d] = [][cite: 1]
-        orders_map[d].append(o)[cite: 1]
+    orders_map = {}
+    for o in orders_list:
+        d = str(o.get("delivery_date", ""))
+        if d not in orders_map:
+            orders_map[d] = []
+        orders_map[d].append(o)
 
-    today_str = today_jalali.strftime("%Y/%m/%d")[cite: 1]
+    today_str = today_jalali.strftime("%Y/%m/%d")
 
-    if cal_view_mode == "نمای روزانه موبایلی (لیست سفارش‌ها)":[cite: 1]
-        st.info("💡 این نما برای مرور آسان روی نمایشگر گوشی بدون نیاز به چرخش صفحه طراحی شده است.")[cite: 1]
-        found_any = False[cite: 1]
-        for day in range(1, days_in_month + 1):[cite: 1]
-            date_key = f"{current_year}/{current_month:02d}/{day:02d}"[cite: 1]
-            day_orders = orders_map.get(date_key, [])[cite: 1]
-            if day_orders:[cite: 1]
-                found_any = True[cite: 1]
-                is_today = (current_year == today_jalali.year and current_month == today_jalali.month and day == today_jalali.day)[cite: 1]
-                today_tag = " <span style='color:#3182ce; font-size:0.85rem;'>(امروز)</span>" if is_today else ""[cite: 1]
-                st.markdown(f"**📌 {day} {month_names[current_month - 1]} {current_year}** {today_tag} — `{len(day_orders)}/{DAILY_CAPACITY_LIMIT} سفارش`", unsafe_allow_html=True)[cite: 1]
-                for item in day_orders:[cite: 1]
-                    item_rem = get_effective_remaining(item)[cite: 1]
-                    badge_class = "badge-paid" if item_rem == 0 else "badge-debt"[cite: 1]
-                    item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""[cite: 1]
+    if cal_view_mode == "نمای روزانه موبایلی (لیست سفارش‌ها)":
+        st.info("💡 این نما برای مرور آسان روی نمایشگر گوشی بدون نیاز به چرخش صفحه طراحی شده است.")
+        found_any = False
+        for day in range(1, days_in_month + 1):
+            date_key = f"{current_year}/{current_month:02d}/{day:02d}"
+            day_orders = orders_map.get(date_key, [])
+            if day_orders:
+                found_any = True
+                is_today = (current_year == today_jalali.year and current_month == today_jalali.month and day == today_jalali.day)
+                today_tag = " <span style='color:#3182ce; font-size:0.85rem;'>(امروز)</span>" if is_today else ""
+                st.markdown(f"**📌 {day} {month_names[current_month - 1]} {current_year}** {today_tag} — `{len(day_orders)}/{DAILY_CAPACITY_LIMIT} سفارش`", unsafe_allow_html=True)
+                for item in day_orders:
+                    item_rem = get_effective_remaining(item)
+                    badge_class = "badge-paid" if item_rem == 0 else "badge-debt"
+                    item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""
                     
-                    is_item_archived = (str(item.get("delivery_date", "")) < today_str) or is_order_fully_checked(item)[cite: 1]
-                    strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""[cite: 1]
+                    is_item_archived = (str(item.get("delivery_date", "")) < today_str) or is_order_fully_checked(item)
+                    strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""
                     
                     st.markdown(f"""
                     <div style='background:#f8fafc; border-right:4px solid #3182ce; padding:8px 12px; border-radius:6px; margin-bottom:6px; font-size:0.85rem; {strike_style}'>
                         📦 <b>{item.get('customer_name')}{item_cid}</b> | مقصد: {item.get('destination_city')} | مانده: {item_rem:,.0f} تومان
                     </div>
-                    """, unsafe_allow_html=True)[cite: 1]
-                st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)[cite: 1]
-        if not found_any:[cite: 1]
-            st.caption("در این ماه هیچ سفارشی ثبت نشده است.")[cite: 1]
+                    """, unsafe_allow_html=True)
+                st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+        if not found_any:
+            st.caption("در این ماه هیچ سفارشی ثبت نشده است.")
 
     else:
-        weekdays_fa = ["شنبه", "۱شنبه", "۲شنبه", "۳شنبه", "۴شنبه", "۵شنبه", "جمعه"][cite: 1]
-        cols_header = st.columns(7)[cite: 1]
-        for idx, day_name in enumerate(weekdays_fa):[cite: 1]
-            cols_header[idx].markdown(f"<div style='text-align:center; font-weight:bold; background:#edf2f7; padding:6px; border-radius:6px;'>{day_name}</div>", unsafe_allow_html=True)[cite: 1]
+        weekdays_fa = ["شنبه", "۱شنبه", "۲شنبه", "۳شنبه", "۴شنبه", "۵شنبه", "جمعه"]
+        cols_header = st.columns(7)
+        for idx, day_name in enumerate(weekdays_fa):
+            cols_header[idx].markdown(f"<div style='text-align:center; font-weight:bold; background:#edf2f7; padding:6px; border-radius:6px;'>{day_name}</div>", unsafe_allow_html=True)
 
-        day_counter = 1[cite: 1]
-        total_slots = start_weekday + days_in_month[cite: 1]
-        rows = (total_slots + 6) // 7[cite: 1]
+        day_counter = 1
+        total_slots = start_weekday + days_in_month
+        rows = (total_slots + 6) // 7
 
-        for row in range(rows):[cite: 1]
-            cols = st.columns(7)[cite: 1]
-            for col_idx in range(7):[cite: 1]
-                current_slot = row * 7 + col_idx[cite: 1]
-                with cols[col_idx]:[cite: 1]
-                    if current_slot < start_weekday or day_counter > days_in_month:[cite: 1]
-                        st.markdown("<div style='min-height:110px;'></div>", unsafe_allow_html=True)[cite: 1]
+        for row in range(rows):
+            cols = st.columns(7)
+            for col_idx in range(7):
+                current_slot = row * 7 + col_idx
+                with cols[col_idx]:
+                    if current_slot < start_weekday or day_counter > days_in_month:
+                        st.markdown("<div style='min-height:110px;'></div>", unsafe_allow_html=True)
                     else:
-                        date_key = f"{current_year}/{current_month:02d}/{day_counter:02d}"[cite: 1]
-                        day_orders = orders_map.get(date_key, [])[cite: 1]
-                        order_count = len(day_orders)[cite: 1]
+                        date_key = f"{current_year}/{current_month:02d}/{day_counter:02d}"
+                        day_orders = orders_map.get(date_key, [])
+                        order_count = len(day_orders)
                         
-                        is_today = (current_year == today_jalali.year and current_month == today_jalali.month and day_counter == today_jalali.day)[cite: 1]
-                        is_full = order_count >= DAILY_CAPACITY_LIMIT[cite: 1]
-                        has_orders = order_count > 0[cite: 1]
+                        is_today = (current_year == today_jalali.year and current_month == today_jalali.month and day_counter == today_jalali.day)
+                        is_full = order_count >= DAILY_CAPACITY_LIMIT
+                        has_orders = order_count > 0
 
-                        cell_classes = ["calendar-cell"][cite: 1]
-                        if is_today:[cite: 1]
-                            cell_classes.append("cell-today")[cite: 1]
-                        if is_full:[cite: 1]
-                            cell_classes.append("cell-full")[cite: 1]
-                        elif has_orders:[cite: 1]
-                            cell_classes.append("cell-available")[cite: 1]
+                        cell_classes = ["calendar-cell"]
+                        if is_today:
+                            cell_classes.append("cell-today")
+                        if is_full:
+                            cell_classes.append("cell-full")
+                        elif has_orders:
+                            cell_classes.append("cell-available")
 
-                        capacity_badge = ""[cite: 1]
-                        if is_full:[cite: 1]
-                            capacity_badge = f"<span style='color:#e53e3e; font-size:0.75rem; font-weight:bold;'>🚨 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"[cite: 1]
-                        elif has_orders:[cite: 1]
-                            capacity_badge = f"<span style='color:#38a169; font-size:0.75rem;'>🟢 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"[cite: 1]
+                        capacity_badge = ""
+                        if is_full:
+                            capacity_badge = f"<span style='color:#e53e3e; font-size:0.75rem; font-weight:bold;'>🚨 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
+                        elif has_orders:
+                            capacity_badge = f"<span style='color:#38a169; font-size:0.75rem;'>🟢 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
                         else:
-                            capacity_badge = "<span style='color:#a0aec0; font-size:0.72rem;'>خالی</span>"[cite: 1]
+                            capacity_badge = "<span style='color:#a0aec0; font-size:0.72rem;'>خالی</span>"
 
-                        orders_html = ""[cite: 1]
-                        for item in day_orders[:3]:[cite: 1]
-                            item_rem = get_effective_remaining(item)[cite: 1]
-                            badge_class = "badge-paid" if item_rem == 0 else "badge-debt"[cite: 1]
-                            p_title = item.get('product_name') or item.get('product_desc') or ''[cite: 1]
-                            item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""[cite: 1]
+                        orders_html = ""
+                        for item in day_orders[:3]:
+                            item_rem = get_effective_remaining(item)
+                            badge_class = "badge-paid" if item_rem == 0 else "badge-debt"
+                            p_title = item.get('product_name') or item.get('product_desc') or ''
+                            item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""
                             
-                            is_item_archived = (str(item.get("delivery_date", "")) < today_str) or is_order_fully_checked(item)[cite: 1]
-                            strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""[cite: 1]
+                            is_item_archived = (str(item.get("delivery_date", "")) < today_str) or is_order_fully_checked(item)
+                            strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""
 
-                            orders_html += f"<div class='order-badge {badge_class}' style='{strike_style}' title='{p_title}'>📦 {item['customer_name']}{item_cid} ({item['destination_city']})</div>"[cite: 1]
+                            orders_html += f"<div class='order-badge {badge_class}' style='{strike_style}' title='{p_title}'>📦 {item['customer_name']}{item_cid} ({item['destination_city']})</div>"
                         
-                        if len(day_orders) > 3:[cite: 1]
-                            orders_html += f"<div style='font-size:0.7rem; color:#718096;'>+ {len(day_orders)-3} مورد دیگر...</div>"[cite: 1]
+                        if len(day_orders) > 3:
+                            orders_html += f"<div style='font-size:0.7rem; color:#718096;'>+ {len(day_orders)-3} مورد دیگر...</div>"
 
                         st.markdown(f"""
                         <div class="{' '.join(cell_classes)}">
@@ -958,6 +957,6 @@ with tab_cal:[cite: 1]
                             </div>
                             {orders_html}
                         </div>
-                        """, unsafe_allow_html=True)[cite: 1]
+                        """, unsafe_allow_html=True)
                         
-                        day_counter += 1[cite: 1]
+                        day_counter += 1

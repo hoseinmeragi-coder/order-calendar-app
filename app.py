@@ -11,132 +11,245 @@ from PIL import Image
 # تنظیمات اولیه صفحه
 st.set_page_config(
     page_title="مدیریت سفارش‌ها و تقویم ظرفیت (شمسی ابری)",
-    page_icon="📅",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# استایل اختصاصی راست‌‌چین (RTL) و کارت‌های مدرن + حل تداخل آیکون‌های Expander
+# استایل اختصاصی فوق‌پیشرفته و مدرن (Modern Clean UI)
 st.markdown("""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
-    
+
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #eef2ff;
+        --primary-hover: #4338ca;
+        --surface: #ffffff;
+        --bg-app: #f8fafc;
+        --border-color: #e2e8f0;
+        --border-subtle: #f1f5f9;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --success-bg: #ecfdf5;
+        --success-text: #047857;
+        --danger-bg: #fef2f2;
+        --danger-text: #b91c1c;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 14px -2px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08);
+        --radius-lg: 16px;
+        --radius-md: 12px;
+        --radius-sm: 8px;
+    }
+
     html, body, [class*="css"], div, p, span, h1, h2, h3, h4, h5, h6, input, select, textarea, button {
-        font-family: 'Vazirmatn', sans-serif !important;
+        font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        letter-spacing: -0.01em;
     }
-    
-    /* استثنا کردن آیکون‌های پیش‌فرض استریم‌لیت جهت عدم نمایش نام کد آیکون */
-    [data-testid="stIconMaterial"], .material-symbols-rounded, .material-symbols-outlined {
-        font-family: 'Material Symbols Rounded', 'Material Symbols Outlined' !important;
-        direction: ltr !important;
-    }
-    
+
     .stApp {
+        background-color: var(--bg-app);
         direction: rtl;
         text-align: right;
     }
 
-    .stButton>button {
-        border-radius: 10px;
-        transition: all 0.3s ease;
+    /* هدر اصلی اپلیکیشن */
+    h1 {
+        font-size: 1.75rem !important;
+        font-weight: 800 !important;
+        color: var(--text-main) !important;
+        margin-bottom: 1.5rem !important;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    /* کارت‌های خلاصه آمار بالا */
+    [data-testid="stIconMaterial"], .material-symbols-rounded, .material-symbols-outlined {
+        font-family: 'Material Symbols Rounded', 'Material Symbols Outlined' !important;
+        direction: ltr !important;
+    }
+
+    /* ورودی‌ها و المان‌های فرم */
+    .stTextInput input, .stTextArea textarea, .stSelectbox select, div[data-baseweb="select"] {
+        border-radius: var(--radius-md) !important;
+        border: 1px solid var(--border-color) !important;
+        background-color: #ffffff !important;
+        box-shadow: var(--shadow-sm) !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+    }
+
+    /* دکمه‌ها */
+    .stButton>button {
+        border-radius: var(--radius-md) !important;
+        font-weight: 600 !important;
+        padding: 0.55rem 1.25rem !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: var(--shadow-sm) !important;
+        border: 1px solid transparent !important;
+    }
+    .stButton>button:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md) !important;
+    }
+    .stButton>button[kind="primary"] {
+        background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%) !important;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25) !important;
+    }
+
+    /* کارت‌های شاخص آمار (KPI Bento Cards) */
     .metric-card {
         background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 14px 16px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        text-align: center;
-        margin-bottom: 10px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: var(--radius-lg);
+        padding: 18px 20px;
+        box-shadow: var(--shadow-md);
+        text-align: right;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+    .metric-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, #4f46e5, #06b6d4);
     }
     .metric-label {
         font-size: 0.85rem;
-        color: #718096;
-        margin-bottom: 6px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 8px;
     }
     .metric-value {
-        font-size: 1.25rem;
-        font-weight: bold;
-        color: #2d3748;
-    }
-    
-    .order-card {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px 12px 0 0;
-        padding: 18px 18px 12px 18px;
-        border-right: 6px solid #3182ce;
-        border-bottom: 1px dashed #e2e8f0;
-    }
-    .order-steps-container {
-        background-color: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-top: none;
-        border-radius: 0 0 12px 12px;
-        border-right: 6px solid #3182ce;
-        padding: 8px 16px 4px 16px;
-        margin-bottom: 16px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: var(--text-main);
+        letter-spacing: -0.02em;
     }
 
+    /* کارت سفارش اصلی */
+    .order-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        padding: 22px 24px 16px 24px;
+        border-right: 5px solid var(--primary);
+        box-shadow: var(--shadow-sm);
+        transition: border-color 0.2s ease;
+    }
+    .order-card:hover {
+        border-color: #cbd5e1;
+    }
+    .order-steps-container {
+        background: #fbfcfe;
+        border: 1px solid var(--border-color);
+        border-top: none;
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        border-right: 5px solid var(--primary);
+        padding: 12px 24px 8px 24px;
+        margin-bottom: 22px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* المان‌های تقویم ماهانه */
     .calendar-cell {
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 8px;
-        min-height: 110px;
-        margin-bottom: 8px;
-        background-color: #ffffff;
-        transition: all 0.2s ease;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 10px;
+        min-height: 120px;
+        margin-bottom: 10px;
+        background: #ffffff;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.25s ease;
+        position: relative;
     }
     .calendar-cell:hover {
-        border-color: #3182ce;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        border-color: #94a3b8;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
     }
     .cell-today {
-        border: 2px solid #3182ce !important;
-        background-color: #ebf8ff;
+        border: 2px solid #4f46e5 !important;
+        background: #fdfdfe !important;
+        box-shadow: 0 0 12px rgba(79, 70, 229, 0.12) !important;
     }
     .cell-full {
-        border-right: 5px solid #e53e3e !important;
-        background-color: #fff5f5;
+        border-right: 4px solid #ef4444 !important;
+        background: #fffafa !important;
     }
     .cell-available {
-        border-right: 5px solid #38a169 !important;
-        background-color: #f0fff4;
+        border-right: 4px solid #10b981 !important;
+        background: #f8fdfa !important;
     }
     .day-num {
-        font-weight: bold;
-        font-size: 1.05rem;
-        margin-bottom: 4px;
-        color: #2d3748;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--text-main);
     }
     .order-badge {
-        font-size: 0.72rem;
-        padding: 2px 6px;
-        border-radius: 4px;
-        margin-top: 3px;
+        font-size: 0.74rem;
+        font-weight: 500;
+        padding: 3px 8px;
+        border-radius: 6px;
+        margin-top: 5px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         display: block;
+        transition: transform 0.15s ease;
+    }
+    .order-badge:hover {
+        transform: scale(0.98);
     }
     .badge-paid {
-        background-color: #bee3f8;
-        color: #2b6cb0;
+        background-color: var(--success-bg);
+        color: var(--success-text);
+        border: 1px solid rgba(16, 185, 129, 0.15);
     }
     .badge-debt {
-        background-color: #feebc8;
-        color: #c05621;
+        background-color: #fff7ed;
+        color: #c2410c;
+        border: 1px solid rgba(234, 88, 12, 0.15);
     }
 
+    /* تب‌ها */
+    div[data-baseweb="tab-list"] {
+        gap: 8px !important;
+        border-bottom: 2px solid var(--border-color) !important;
+        padding-bottom: 4px !important;
+        margin-bottom: 20px !important;
+    }
+    div[data-baseweb="tab"] {
+        padding: 10px 18px !important;
+        border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        color: var(--text-muted) !important;
+    }
+    div[aria-selected="true"] {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary) !important;
+    }
+
+    /* اکوردیون (Expander) */
     div[data-testid="stExpander"] {
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 12px !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: var(--radius-lg) !important;
         background: #ffffff !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important;
-        margin-top: 15px !important;
+        box-shadow: var(--shadow-sm) !important;
+        margin-top: 18px !important;
         overflow: hidden;
     }
     div[data-testid="stExpander"] summary {
@@ -146,28 +259,26 @@ st.markdown("""
         flex-direction: row-reverse !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 12px 18px !important;
-        font-weight: bold !important;
-        color: #334155 !important;
-    }
-    div[data-testid="stExpander"] summary svg {
-        margin: 0 !important;
+        padding: 14px 20px !important;
+        font-weight: 700 !important;
+        color: var(--text-main) !important;
+        background: #f8fafc !important;
     }
 
     @media (max-width: 768px) {
         .calendar-cell {
-            min-height: 85px;
-            padding: 4px;
+            min-height: 90px;
+            padding: 6px;
         }
         .day-num {
-            font-size: 0.9rem;
+            font-size: 0.92rem;
         }
         .order-badge {
-            font-size: 0.65rem;
-            padding: 1px 3px;
+            font-size: 0.68rem;
+            padding: 2px 4px;
         }
         .order-card {
-            padding: 12px;
+            padding: 16px;
         }
     }
 </style>
@@ -332,7 +443,7 @@ def get_effective_remaining(o):
     return o.get("remaining_payment", 0)
 
 # ----------------- هدر و آمار کلیدی -----------------
-st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")
+st.title("🎛️ داشبورد جامع سفارش‌ها و تقویم ظرفیت")
 
 total_orders = len(orders_list)
 total_revenue = sum(o.get("total_price", 0) for o in orders_list)
@@ -342,33 +453,33 @@ m1, m2, m3, m4 = st.columns(4)
 with m1:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">کل سفارش‌ها</div>
-        <div class="metric-value">{total_orders} عدد</div>
+        <div class="metric-label">📦 کل سفارش‌ها</div>
+        <div class="metric-value">{total_orders} <span style="font-size:0.9rem; font-weight:400; color:#64748b;">عدد</span></div>
     </div>
     """, unsafe_allow_html=True)
 with m2:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">مجموع ارزش سفارش‌ها</div>
-        <div class="metric-value">{total_revenue:,.0f} تومان</div>
+        <div class="metric-label">💳 مجموع ارزش سفارش‌ها</div>
+        <div class="metric-value">{total_revenue:,.0f} <span style="font-size:0.85rem; font-weight:400; color:#64748b;">تومان</span></div>
     </div>
     """, unsafe_allow_html=True)
 with m3:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">مجموع مانده حساب‌ها</div>
-        <div class="metric-value">{pending_balance:,.0f} تومان</div>
+        <div class="metric-label">⏳ مجموع مانده حساب‌ها</div>
+        <div class="metric-value">{pending_balance:,.0f} <span style="font-size:0.85rem; font-weight:400; color:#64748b;">تومان</span></div>
     </div>
     """, unsafe_allow_html=True)
 with m4:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">سقف ظرفیت روزانه</div>
-        <div class="metric-value">{DAILY_CAPACITY_LIMIT} سفارش</div>
+        <div class="metric-label">📊 سقف ظرفیت روزانه</div>
+        <div class="metric-value">{DAILY_CAPACITY_LIMIT} <span style="font-size:0.85rem; font-weight:400; color:#64748b;">سفارش</span></div>
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("---")
+st.write("")
 
 # ----------------- دکمه ثبت سفارش جدید -----------------
 col_btn, _ = st.columns([1.5, 4])
@@ -387,7 +498,7 @@ if st.session_state.show_new_order_modal or is_editing:
         current_order = next((o for o in orders_list if str(o["id"]) == str(st.session_state.editing_order_id)), None)
 
     st.markdown("---")
-    title_box = "✏ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"
+    title_box = "✏️ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"
     st.subheader(title_box)
 
     with st.form("order_form", clear_on_submit=False):
@@ -427,7 +538,7 @@ if st.session_state.show_new_order_modal or is_editing:
             f_destination_city = st.text_input("شهر مقصد", value=city_default, placeholder="مثلاً: مشهد، تهران...")
 
         with c_date:
-            st.markdown("<p style='font-weight:600; margin-bottom:5px;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-weight:600; font-size:0.9rem; margin-bottom:5px; color:#334155;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)
             cd_d, cd_m, cd_y = st.columns([1, 1.5, 1.2])
             
             d_def, m_def, y_def = today_jalali.day, today_jalali.month, today_jalali.year
@@ -619,20 +730,20 @@ def render_order_card(order, prefix="card", is_archived=False):
             contact_display = phone_val if phone_val else (cid_val if cid_val else "-")
             
             em_val = str(order.get("emergency_phone", "")).strip()
-            em_part = f"<span>🚨 <b>اضطراری:</b> {em_val}</span>" if em_val else ""
+            em_part = f"<span style='background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:6px;'>🚨 <b>اضطراری:</b> {em_val}</span>" if em_val else ""
 
             post_val = str(order.get("postal_code", "")).strip()
             post_part = f"<span>📮 <b>کد پستی:</b> {post_val}</span>" if post_val else ""
 
             addr_val = str(order.get("address", "")).strip()
-            addr_part = f"<div style='font-size:0.85rem; color:#4a5568; margin-top:6px;'>🏠 <b>آدرس:</b> {addr_val}</div>" if addr_val else ""
+            addr_part = f"<div style='font-size:0.87rem; color:#475569; margin-top:8px; line-height:1.6;'>🏠 <b>آدرس:</b> {addr_val}</div>" if addr_val else ""
 
             init_p = order.get("initial_payment", 0)
             
             is_settled = _is_truthy(order.get("chk_settle", False))
             rem_p = 0 if is_settled else order.get("remaining_payment", 0)
             tot_p = order.get("total_price", 0)
-            debt_color = "#38a169" if rem_p == 0 else "#e53e3e"
+            debt_color = "#10b981" if rem_p == 0 else "#ef4444"
 
             desc_val = str(order.get("product_desc", "")).strip()
 
@@ -642,23 +753,23 @@ def render_order_card(order, prefix="card", is_archived=False):
 
             if has_img:
                 bottom_section = (
-                    f"<div style='display:flex; gap:14px; align-items:flex-start; margin-top:10px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #edf2f7;'>"
-                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:120px; min-width:120px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover;'/>"
-                    f"<div style='flex:1; font-size:0.85rem; color:#4a5568; line-height:1.6;'>"
-                    f"📝 <b>توضیحات و جزئیات ساخت:</b><br/>{desc_val if desc_val else '<i>بدون توضیحات</i>'}"
+                    f"<div style='display:flex; gap:16px; align-items:flex-start; margin-top:12px; background:#f8fafc; padding:12px; border-radius:12px; border:1px solid #e2e8f0;'>"
+                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:120px; min-width:120px; border-radius:10px; border:1px solid #cbd5e1; object-fit:cover; box-shadow:0 2px 6px rgba(0,0,0,0.06);'/>"
+                    f"<div style='flex:1; font-size:0.87rem; color:#334155; line-height:1.7;'>"
+                    f"<span style='font-weight:700; color:#1e293b;'>📝 توضیحات و جزئیات ساخت:</span><br/>{desc_val if desc_val else '<i>بدون توضیحات اضافی</i>'}"
                     f"</div>"
                     f"</div>"
                 )
             else:
-                bottom_section = f"<div style='font-size:0.83rem; color:#718096; margin-top:6px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
+                bottom_section = f"<div style='font-size:0.85rem; color:#64748b; margin-top:8px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
 
             card_html = (
                 f"<div class='order-card'>"
-                f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>"
-                f"<span style='font-weight:bold; font-size:1.15rem; color:#2d3748;'>👤 {c_name}{c_id_tag} <span style='font-size:0.85rem; color:#718096;'>({inv_no})</span></span>"
+                f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;'>"
+                f"<span style='font-weight:800; font-size:1.15rem; color:#0f172a;'>👤 {c_name}{c_id_tag} <span style='font-size:0.82rem; font-weight:600; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:6px; margin-right:6px;'>{inv_no}</span></span>"
                 f"</div>"
-                f"<div style='display:flex; gap:20px; flex-wrap:wrap; font-size:0.9rem; color:#4a5568; margin-bottom:8px;'>"
-                f"<span>🏷️ <b>محصول:</b> {prod_display}</span>"
+                f"<div style='display:flex; gap:18px; flex-wrap:wrap; font-size:0.88rem; color:#475569; margin-bottom:8px;'>"
+                f"<span>🏷️ <b>محصول:</b> <span style='color:#0f172a;'>{prod_display}</span></span>"
                 f"<span>📍 <b>مقصد:</b> {city}</span>"
                 f"<span>📞 <b>تماس:</b> {contact_display}</span>"
                 f"{em_part}"
@@ -668,10 +779,10 @@ def render_order_card(order, prefix="card", is_archived=False):
                 f"<span>📦 <b>کد رهگیری:</b> {track_no}</span>"
                 f"</div>"
                 f"{addr_part}"
-                f"<div style='display:flex; gap:25px; flex-wrap:wrap; font-size:0.88rem; background:#f7fafc; padding:8px 12px; border-radius:8px; margin-top:8px;'>"
+                f"<div style='display:flex; gap:20px; flex-wrap:wrap; font-size:0.88rem; background:#f8fafc; padding:10px 14px; border-radius:10px; margin-top:10px; border:1px solid #f1f5f9;'>"
                 f"<span>💰 <b>پیش‌پرداخت:</b> {init_p:,.0f} تومان</span>"
-                f"<span>⚖️ <b>مانده تسویه:</b> <b style='color:{debt_color};'>{rem_p:,.0f} تومان</b></span>"
-                f"<span>💵 <b>جمع کل:</b> {tot_p:,.0f} تومان</span>"
+                f"<span>⚖️ <b>مانده تسویه:</b> <b style='color:{debt_color}; font-size:0.95rem;'>{rem_p:,.0f} تومان</b></span>"
+                f"<span>💵 <b>جمع کل:</b> <b style='color:#0f172a;'>{tot_p:,.0f} تومان</b></span>"
                 f"</div>"
                 f"{bottom_section}"
                 f"</div>"
@@ -743,7 +854,7 @@ def render_order_card(order, prefix="card", is_archived=False):
 
 # ----------------- تب ۱: کارت‌های مشتریان -----------------
 with tab_cards:
-    col_t2, col_t1 = st.columns([1, 3])
+    col_t2, col_t1 = st.columns([1.2, 2.8])
     with col_t1:
         st.subheader("📋 مدیریت پرونده‌های مشتریان")
     with col_t2:
@@ -795,7 +906,7 @@ with tab_cards:
             orders_in_date = date_groups[d]
             is_today = (d == today_str)
             today_tag = " — 🎯 تحویل امروز" if is_today else ""
-            st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — {len(orders_in_date)} سفارش")
+            st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — `{len(orders_in_date)} سفارش`")
             for idx, order in enumerate(orders_in_date):
                 render_order_card(order, prefix=f"act_{d.replace('/', '_')}_{idx}", is_archived=False)
 
@@ -839,7 +950,7 @@ with tab_cal:
             st.rerun()
 
     with col_nav2:
-        st.markdown(f"<h3 style='text-align: center; margin:0;'>{month_names[st.session_state.cal_month - 1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='text-align: center; margin:0; font-weight:800; color:#1e293b;'>{month_names[st.session_state.cal_month - 1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)
 
     with col_nav3:
         if st.button("ماه بعد ➡️", use_container_width=True, key="next_m"):
@@ -881,7 +992,7 @@ with tab_cal:
             if day_orders:
                 found_any = True
                 is_today = (current_year == today_jalali.year and current_month == today_jalali.month and day == today_jalali.day)
-                today_tag = " <span style='color:#3182ce; font-size:0.85rem;'>(امروز)</span>" if is_today else ""
+                today_tag = " <span style='color:#4f46e5; font-size:0.85rem; font-weight:700;'>(امروز)</span>" if is_today else ""
                 st.markdown(f"**📌 {day} {month_names[current_month - 1]} {current_year}** {today_tag} — `{len(day_orders)}/{DAILY_CAPACITY_LIMIT} سفارش`", unsafe_allow_html=True)
                 for item in day_orders:
                     item_rem = get_effective_remaining(item)
@@ -892,11 +1003,11 @@ with tab_cal:
                     strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""
                     
                     st.markdown(f"""
-                    <div style='background:#f8fafc; border-right:4px solid #3182ce; padding:8px 12px; border-radius:6px; margin-bottom:6px; font-size:0.85rem; {strike_style}'>
+                    <div style='background:#ffffff; border:1px solid #e2e8f0; border-right:4px solid #4f46e5; padding:10px 14px; border-radius:10px; margin-bottom:8px; font-size:0.88rem; box-shadow:0 1px 3px rgba(0,0,0,0.03); {strike_style}'>
                         📦 <b>{item.get('customer_name')}{item_cid}</b> | مقصد: {item.get('destination_city')} | مانده: {item_rem:,.0f} تومان
                     </div>
                     """, unsafe_allow_html=True)
-                st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+                st.markdown("<hr style='margin:12px 0; border:0; border-top:1px solid #f1f5f9;'>", unsafe_allow_html=True)
         if not found_any:
             st.caption("در این ماه هیچ سفارشی ثبت نشده است.")
 
@@ -904,7 +1015,7 @@ with tab_cal:
         weekdays_fa = ["شنبه", "۱شنبه", "۲شنبه", "۳شنبه", "۴شنبه", "۵شنبه", "جمعه"]
         cols_header = st.columns(7)
         for idx, day_name in enumerate(weekdays_fa):
-            cols_header[idx].markdown(f"<div style='text-align:center; font-weight:bold; background:#edf2f7; padding:6px; border-radius:6px;'>{day_name}</div>", unsafe_allow_html=True)
+            cols_header[idx].markdown(f"<div style='text-align:center; font-weight:700; color:#475569; background:#f1f5f9; padding:8px 4px; border-radius:8px; font-size:0.88rem;'>{day_name}</div>", unsafe_allow_html=True)
 
         day_counter = 1
         total_slots = start_weekday + days_in_month
@@ -916,7 +1027,7 @@ with tab_cal:
                 current_slot = row * 7 + col_idx
                 with cols[col_idx]:
                     if current_slot < start_weekday or day_counter > days_in_month:
-                        st.markdown("<div style='min-height:110px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='min-height:120px;'></div>", unsafe_allow_html=True)
                     else:
                         date_key = f"{current_year}/{current_month:02d}/{day_counter:02d}"
                         day_orders = orders_map.get(date_key, [])
@@ -936,11 +1047,11 @@ with tab_cal:
 
                         capacity_badge = ""
                         if is_full:
-                            capacity_badge = f"<span style='color:#e53e3e; font-size:0.75rem; font-weight:bold;'>🚨 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
+                            capacity_badge = f"<span style='color:#ef4444; font-size:0.75rem; font-weight:800;'>🚨 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
                         elif has_orders:
-                            capacity_badge = f"<span style='color:#38a169; font-size:0.75rem;'>🟢 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
+                            capacity_badge = f"<span style='color:#10b981; font-size:0.75rem; font-weight:700;'>🟢 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
                         else:
-                            capacity_badge = "<span style='color:#a0aec0; font-size:0.72rem;'>خالی</span>"
+                            capacity_badge = "<span style='color:#94a3b8; font-size:0.72rem;'>خالی</span>"
 
                         orders_html = ""
                         for item in day_orders[:3]:
@@ -955,7 +1066,7 @@ with tab_cal:
                             orders_html += f"<div class='order-badge {badge_class}' style='{strike_style}' title='{p_title}'>📦 {item['customer_name']}{item_cid} ({item['destination_city']})</div>"
                         
                         if len(day_orders) > 3:
-                            orders_html += f"<div style='font-size:0.7rem; color:#718096;'>+ {len(day_orders)-3} مورد دیگر...</div>"
+                            orders_html += f"<div style='font-size:0.7rem; color:#64748b; font-weight:600; margin-top:2px;'>+ {len(day_orders)-3} سفارش دیگر...</div>"
 
                         st.markdown(f"""
                         <div class="{' '.join(cell_classes)}">

@@ -635,13 +635,22 @@ def render_order_card(order, prefix="card", is_archived=False):
             debt_color = "#38a169" if rem_p == 0 else "#e53e3e"
 
             desc_val = str(order.get("product_desc", "")).strip()
-            desc_part = f"<div style='font-size:0.83rem; color:#718096; margin-top:6px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
 
-            # تصویر فشرده سفارش
+            # تصویر و قرارگیری توضیحات در کنار تصویر
             img_val = str(order.get("order_image", "")).strip()
-            img_html = ""
-            if img_val and img_val.lower() != "nan":
-                img_html = f"<div style='margin-top:10px;'><img src='data:image/jpeg;base64,{img_val}' style='max-width:160px; max-height:160px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover;'/></div>"
+            has_img = bool(img_val and img_val.lower() != "nan")
+
+            if has_img:
+                bottom_section = (
+                    f"<div style='display:flex; gap:14px; align-items:flex-start; margin-top:10px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #edf2f7;'>"
+                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:120px; min-width:120px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover;'/>"
+                    f"<div style='flex:1; font-size:0.85rem; color:#4a5568; line-height:1.6;'>"
+                    f"📝 <b>توضیحات و جزئیات ساخت:</b><br/>{desc_val if desc_val else '<i>بدون توضیحات</i>'}"
+                    f"</div>"
+                    f"</div>"
+                )
+            else:
+                bottom_section = f"<div style='font-size:0.83rem; color:#718096; margin-top:6px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
 
             card_html = (
                 f"<div class='order-card'>"
@@ -664,8 +673,7 @@ def render_order_card(order, prefix="card", is_archived=False):
                 f"<span>⚖️ <b>مانده تسویه:</b> <b style='color:{debt_color};'>{rem_p:,.0f} تومان</b></span>"
                 f"<span>💵 <b>جمع کل:</b> {tot_p:,.0f} تومان</span>"
                 f"</div>"
-                f"{desc_part}"
-                f"{img_html}"
+                f"{bottom_section}"
                 f"</div>"
             )
             st.markdown(card_html, unsafe_allow_html=True)

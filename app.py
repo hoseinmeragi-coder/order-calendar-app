@@ -38,7 +38,7 @@ st.markdown("""
         transition: all 0.3s ease;
     }
 
-    /* کارت‌های خلاصه آمار بالا - سازگار با وب‌کیت و مرورگرها */
+    /* کارت‌های خلاصه آمار بالا */
     .metric-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -128,7 +128,6 @@ st.markdown("""
         color: #c05621;
     }
 
-    /* اصلاح اختصاصی باکس کشویی سفارش‌های گذشته و تفکیک آیکون از متن */
     div[data-testid="stExpander"] {
         border: 1px solid #cbd5e1 !important;
         border-radius: 12px !important;
@@ -174,13 +173,19 @@ st.markdown("""
 DAILY_CAPACITY_LIMIT = 5
 
 def parse_int_price(val):
-    if not val:
+    if not val or pd.isna(val):
         return 0
     clean_str = str(val).replace(",", "").replace("،", "").strip()
     try:
         return int(float(clean_str))
     except Exception:
         return 0
+
+def clean_phone_str(val):
+    if not val or pd.isna(val):
+        return ""
+    val_str = str(val).split(".")[0].strip()
+    return "" if val_str.lower() == "nan" else val_str
 
 def _is_truthy(val):
     if isinstance(val, bool):
@@ -209,32 +214,6 @@ def get_worksheet():
     except Exception:
         return sh.get_worksheet(0)
 
-@st.cache_data(ttl=60)
-def load_orders():
-    try:
-        ws = get_worksheet()
-        vals = ws.get_all_values()
-        if not vals or len(vals) < 2:
-            return []
-        df = pd.DataFrame(vals[1:], columns=vals[0])
-        orders = df.to_dict(orient="records")
-        for o in orders:
-            o["id"] = int(o["id"]) if str(o.get("id", "")).isdigit() else o.get("id", "")
-            o["initial_payment"] = parse_int_price(o.get("initial_payment", 0))
-            o["remaining_payment"] = parse_int_price(o.get("remaining_payment", 0))
-            o["total_price"] = parse_int_price(o.get("total_price", 0)) or (o["initial_payment"] + o["remaining_payment"])
-            if "order_created_at" not in o or not o["order_created_at"]:
-                o["order_created_at"] = "1400/01/01 00:00"
-            # تبدیل وضعیت چک‌باکس‌ها به مقدار بولین
-            o["chk_deposit"] = _is_truthy(o.get("chk_deposit", False))
-            o["chk_photo"] = _is_truthy(o.get("chk_photo", False))
-            o["chk_settle"] = _is_truthy(o.get("chk_settle", False))
-            o["chk_pack"] = _is_truthy(o.get("chk_pack", False))
-            o["chk_post"] = _is_truthy(o.get("chk_post", False))
-        return orders
-    except Exception:
-        return []
-
 def save_orders(orders):
     try:
         ws = get_worksheet()
@@ -250,7 +229,73 @@ def save_orders(orders):
     except Exception as e:
         st.error(f"خطا در همگام‌سازی ابری: {e}")
 
+@st.cache_data(ttl=60)
+def load_orders():
+    try:
+        ws = get_worksheet()
+        vals = ws.get_all_values()
+        if not vals or len(vals) < 2:
+            return []
+        df = pd.DataFrame(vals[1:], columns=vals[0])
+        orders = df.to_dict(orient="records")
+        
+        # محاسبه بزرگترین شناسه موجود
+        numeric_ids = []
+        for o in orders:
+            val = str(o.get("id", "")).strip()
+            if val.isdigit():
+                numeric_ids.append(int(val))
+        current_max_id = max(numeric_ids) if numeric_ids else 0
+
+        # رفع خودکار شناسه‌های تکراری (مانند ایلیا و حنانه)
+        seen_ids = set()
+        has_duplicates = False
+        for o in orders:
+            raw_id = str(o.get("id", "")).strip()
+            if not raw_id or raw_id in seen_ids:
+                current_max_id += 1
+                o["id"] = current_max_id
+                has_duplicates = True
+            else:
+                o["id"] = int(raw_id) if raw_id.isdigit() else raw_id
+                seen_ids.add(str(o["id"]))
+
+            o["phone"] = clean_phone_str(o.get("phone", ""))
+            o["emergency_phone"] = clean_phone_str(o.get("emergency_phone", ""))
+            o["postal_code"] = clean_phone_str(o.get("postal_code", ""))
+
+            o["initial_payment"] = parse_int_price(o.get("initial_payment", 0))
+            o["remaining_payment"] = parse_int_price(o.get("remaining_payment", 0))
+            o["total_price"] = parse_int_price(o.get("total_price", 0)) or (o["initial_payment"] + o["remaining_payment"])
+            if "order_created_at" not in o or not o["order_created_at"]:
+                o["order_created_at"] = "1400/01/01 00:00"
+
+            o["chk_deposit"] = _is_truthy(o.get("chk_deposit", False))
+            o["chk_photo"] = _is_truthy(o.get("chk_photo", False))
+            o["chk_settle"] = _is_truthy(o.get("chk_settle", False))
+            o["chk_pack"] = _is_truthy(o.get("chk_pack", False))
+            o["chk_post"] = _is_truthy(o.get("chk_post", False))
+
+        if has_duplicates:
+            save_orders(orders)
+
+        return orders
+    except Exception:
+        return []
+
 orders_list = load_orders()
+
+def get_next_id(orders):
+    n_ids = [int(o["id"]) for o in orders if str(o.get("id", "")).isdigit()]
+    return (max(n_ids) if n_ids else 0) + 1
+
+def get_next_invoice_no(orders):
+    max_inv = 1000
+    for o in orders:
+        inv = str(o.get("invoice_no", "")).strip()
+        if inv.startswith("INV-") and inv[4:].isdigit():
+            max_inv = max(max_inv, int(inv[4:]))
+    return f"INV-{max_inv + 1}"
 
 if "show_new_order_modal" not in st.session_state:
     st.session_state.show_new_order_modal = False
@@ -265,7 +310,6 @@ month_names = [
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
 ]
 
-# تابع کمکی برای محاسبه مانده واقعی بر اساس وضعیت تسویه
 def get_effective_remaining(o):
     if _is_truthy(o.get("chk_settle", False)):
         return 0
@@ -333,7 +377,7 @@ if st.session_state.show_new_order_modal or is_editing:
     with st.form("order_form", clear_on_submit=False):
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            inv_default = current_order["invoice_no"] if is_editing else f"INV-{len(orders_list)+1001}"
+            inv_default = current_order["invoice_no"] if is_editing else get_next_invoice_no(orders_list)
             f_invoice_no = st.text_input("شماره فاکتور", value=inv_default)
         with c2:
             c_name_default = current_order["customer_name"] if is_editing else ""
@@ -455,13 +499,14 @@ if st.session_state.show_new_order_modal or is_editing:
                             "tracking_code": f_track_code if f_track_code else "ثبت نشده",
                             "product_desc": f_product_desc
                         })
+                        break
                 save_orders(orders_list)
                 st.session_state.editing_order_id = None
                 st.session_state.show_new_order_modal = False
                 st.success("سفارش با موفقیت در فضای ابری ویرایش شد!")
                 st.rerun()
             else:
-                new_id = len(orders_list) + 1
+                new_id = get_next_id(orders_list)
                 new_item = {
                     "id": new_id,
                     "invoice_no": f_invoice_no,
@@ -497,7 +542,7 @@ st.markdown("---")
 # ----------------- تب‌های برنامه -----------------
 tab_cards, tab_cal = st.tabs(["👥 کارت‌های مشتریان و سفارش‌ها", "📅 تقویم شمسی ظرفیت و زمان‌بندی"])
 
-# ----------------- تابع کمکی تشخیص تکمیل بودن همه مراحل -----------------
+# تابع تشخیص تکمیل بودن همه مراحل
 def is_order_fully_checked(order):
     return (
         _is_truthy(order.get("chk_deposit", False)) and
@@ -507,7 +552,7 @@ def is_order_fully_checked(order):
         _is_truthy(order.get("chk_post", False))
     )
 
-# ----------------- تابع کمکی بروزرسانی چک‌باکس‌های مرحله -----------------
+# تابع بروزرسانی وضعیت مرحله سفارش
 def update_order_step(order_id, step_key, value):
     for o in orders_list:
         if str(o.get("id")) == str(order_id):
@@ -517,14 +562,12 @@ def update_order_step(order_id, step_key, value):
     st.cache_data.clear()
     st.rerun()
 
-# ----------------- تابع کمکی بازگردانی سفارش از بایگانی -----------------
+# تابع بازگردانی از بایگانی
 def restore_archived_order(order_id):
     today_str = today_jalali.strftime("%Y/%m/%d")
     for o in orders_list:
         if str(o.get("id")) == str(order_id):
-            # غیرفعال کردن آخرین چک‌باکس (تحویل به پست) جهت خروج از حالت تکمیل کامل
             o["chk_post"] = False
-            # در صورتی که تاریخ تحویل در گذشته بوده است، تاریخ به امروز بروز می‌شود تا به صفحه فعال بازگردد
             if str(o.get("delivery_date", "")) < today_str:
                 o["delivery_date"] = today_str
             break
@@ -532,7 +575,7 @@ def restore_archived_order(order_id):
     st.cache_data.clear()
     st.rerun()
 
-# ----------------- تابع رندر کارت سفارش -----------------
+# تابع رندر کارت سفارش
 def render_order_card(order, prefix="card", is_archived=False):
     with st.container():
         c_card, c_act = st.columns([4.2, 0.8])
@@ -561,7 +604,6 @@ def render_order_card(order, prefix="card", is_archived=False):
 
             init_p = order.get("initial_payment", 0)
             
-            # در صورتی که چک‌باکس تسویه فعال باشد، مانده صفر لحاظ می‌شود
             is_settled = _is_truthy(order.get("chk_settle", False))
             rem_p = 0 if is_settled else order.get("remaining_payment", 0)
             tot_p = order.get("total_price", 0)
@@ -712,7 +754,7 @@ with tab_cards:
 
         active_dates = sorted(list(date_groups.keys()))
 
-        # نمایش هر تاریخ به عنوان یک بخش با سربرگ مجزا
+        # نمایش هر تاریخ با عنوان مجزا
         for d in active_dates:
             orders_in_date = date_groups[d]
             is_today = (d == today_str)
@@ -721,7 +763,7 @@ with tab_cards:
             for idx, order in enumerate(orders_in_date):
                 render_order_card(order, prefix=f"act_{d.replace('/', '_')}_{idx}", is_archived=False)
 
-        # سفارش‌های گذشته و تکمیل‌شده در باکس بایگانی
+        # سفارش‌های بایگانی شده
         if past_orders:
             with st.expander(f"📦 بایگانی سفارش‌های گذشته و تکمیل‌شده ({len(past_orders)} سفارش)"):
                 for idx, order in enumerate(past_orders):

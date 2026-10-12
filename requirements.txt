@@ -3,3 +3,4 @@ pandas
 jdatetime
 gspread
 google-auth
+Pillow

@@ -3,4 +3,3 @@ pandas
 jdatetime
 gspread
 google-auth
-base64

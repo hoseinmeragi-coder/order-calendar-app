@@ -182,6 +182,11 @@ def parse_int_price(val):
     except Exception:
         return 0
 
+def _is_truthy(val):
+    if isinstance(val, bool):
+        return val
+    return str(val).strip().lower() in ["true", "1", "yes"]
+
 # ----------------- ارتباط با Google Sheets -----------------
 @st.cache_resource
 def get_gspread_client():
@@ -221,11 +226,11 @@ def load_orders():
             if "order_created_at" not in o or not o["order_created_at"]:
                 o["order_created_at"] = "1400/01/01 00:00"
             # تبدیل وضعیت چک‌باکس‌ها به مقدار بولین
-            o["chk_deposit"] = str(o.get("chk_deposit", "False")).lower() == "true"
-            o["chk_photo"] = str(o.get("chk_photo", "False")).lower() == "true"
-            o["chk_settle"] = str(o.get("chk_settle", "False")).lower() == "true"
-            o["chk_pack"] = str(o.get("chk_pack", "False")).lower() == "true"
-            o["chk_post"] = str(o.get("chk_post", "False")).lower() == "true"
+            o["chk_deposit"] = _is_truthy(o.get("chk_deposit", False))
+            o["chk_photo"] = _is_truthy(o.get("chk_photo", False))
+            o["chk_settle"] = _is_truthy(o.get("chk_settle", False))
+            o["chk_pack"] = _is_truthy(o.get("chk_pack", False))
+            o["chk_post"] = _is_truthy(o.get("chk_post", False))
         return orders
     except Exception:
         return []
@@ -262,7 +267,7 @@ month_names = [
 
 # تابع کمکی برای محاسبه مانده واقعی بر اساس وضعیت تسویه
 def get_effective_remaining(o):
-    if o.get("chk_settle", False):
+    if _is_truthy(o.get("chk_settle", False)):
         return 0
     return o.get("remaining_payment", 0)
 
@@ -495,20 +500,21 @@ tab_cards, tab_cal = st.tabs(["👥 کارت‌های مشتریان و سفار
 # ----------------- تابع کمکی تشخیص تکمیل بودن همه مراحل -----------------
 def is_order_fully_checked(order):
     return (
-        bool(order.get("chk_deposit", False)) and
-        bool(order.get("chk_photo", False)) and
-        bool(order.get("chk_settle", False)) and
-        bool(order.get("chk_pack", False)) and
-        bool(order.get("chk_post", False))
+        _is_truthy(order.get("chk_deposit", False)) and
+        _is_truthy(order.get("chk_photo", False)) and
+        _is_truthy(order.get("chk_settle", False)) and
+        _is_truthy(order.get("chk_pack", False)) and
+        _is_truthy(order.get("chk_post", False))
     )
 
 # ----------------- تابع کمکی بروزرسانی چک‌باکس‌های مرحله -----------------
 def update_order_step(order_id, step_key, value):
     for o in orders_list:
         if str(o.get("id")) == str(order_id):
-            o[step_key] = value
+            o[step_key] = bool(value)
             break
     save_orders(orders_list)
+    st.cache_data.clear()
     st.rerun()
 
 # ----------------- تابع کمکی بازگردانی سفارش از بایگانی -----------------
@@ -519,10 +525,11 @@ def restore_archived_order(order_id):
             # غیرفعال کردن آخرین چک‌باکس (تحویل به پست) جهت خروج از حالت تکمیل کامل
             o["chk_post"] = False
             # در صورتی که تاریخ تحویل در گذشته بوده است، تاریخ به امروز بروز می‌شود تا به صفحه فعال بازگردد
-            if o.get("delivery_date", "") < today_str:
+            if str(o.get("delivery_date", "")) < today_str:
                 o["delivery_date"] = today_str
             break
     save_orders(orders_list)
+    st.cache_data.clear()
     st.rerun()
 
 # ----------------- تابع رندر کارت سفارش -----------------
@@ -555,7 +562,7 @@ def render_order_card(order, prefix="card", is_archived=False):
             init_p = order.get("initial_payment", 0)
             
             # در صورتی که چک‌باکس تسویه فعال باشد، مانده صفر لحاظ می‌شود
-            is_settled = bool(order.get("chk_settle", False))
+            is_settled = _is_truthy(order.get("chk_settle", False))
             rem_p = 0 if is_settled else order.get("remaining_payment", 0)
             tot_p = order.get("total_price", 0)
             debt_color = "#38a169" if rem_p == 0 else "#e53e3e"
@@ -600,37 +607,37 @@ def render_order_card(order, prefix="card", is_archived=False):
             k_pt = f"pt_{prefix}_{order['id']}"
 
             with s0:
-                c_d = st.checkbox(
+                st.checkbox(
                     "💵 واریز بیعانه",
-                    value=bool(order.get("chk_deposit", False)),
+                    value=_is_truthy(order.get("chk_deposit", False)),
                     key=k_d,
                     on_change=lambda oid=order['id'], k=k_d: update_order_step(oid, "chk_deposit", st.session_state[k])
                 )
             with s1:
-                c_p = st.checkbox(
+                st.checkbox(
                     "📷 ارسال عکس برای تسویه",
-                    value=bool(order.get("chk_photo", False)),
+                    value=_is_truthy(order.get("chk_photo", False)),
                     key=k_p,
                     on_change=lambda oid=order['id'], k=k_p: update_order_step(oid, "chk_photo", st.session_state[k])
                 )
             with s2:
-                c_s = st.checkbox(
+                st.checkbox(
                     "💳 تسویه",
-                    value=bool(order.get("chk_settle", False)),
+                    value=_is_truthy(order.get("chk_settle", False)),
                     key=k_s,
                     on_change=lambda oid=order['id'], k=k_s: update_order_step(oid, "chk_settle", st.session_state[k])
                 )
             with s3:
-                c_pk = st.checkbox(
+                st.checkbox(
                     "🎁 آماده‌سازی بسته",
-                    value=bool(order.get("chk_pack", False)),
+                    value=_is_truthy(order.get("chk_pack", False)),
                     key=k_pk,
                     on_change=lambda oid=order['id'], k=k_pk: update_order_step(oid, "chk_pack", st.session_state[k])
                 )
             with s4:
-                c_pt = st.checkbox(
+                st.checkbox(
                     "🚚 تحویل به پست",
-                    value=bool(order.get("chk_post", False)),
+                    value=_is_truthy(order.get("chk_post", False)),
                     key=k_pt,
                     on_change=lambda oid=order['id'], k=k_pt: update_order_step(oid, "chk_post", st.session_state[k])
                 )
@@ -664,42 +671,41 @@ with tab_cards:
     if search_query:
         filtered_orders = [
             o for o in orders_list 
-            if search_query in o.get("customer_name", "") 
-            or search_query in o.get("invoice_no", "")
-            or search_query in o.get("destination_city", "")
-            or search_query in o.get("customer_id", "")
-            or search_query in o.get("phone", "")
-            or search_query in o.get("emergency_phone", "")
-            or search_query in o.get("postal_code", "")
-            or search_query in o.get("address", "")
-            or search_query in o.get("product_name", "")
+            if search_query in str(o.get("customer_name", "")) 
+            or search_query in str(o.get("invoice_no", ""))
+            or search_query in str(o.get("destination_city", ""))
+            or search_query in str(o.get("customer_id", ""))
+            or search_query in str(o.get("phone", ""))
+            or search_query in str(o.get("emergency_phone", ""))
+            or search_query in str(o.get("postal_code", ""))
+            or search_query in str(o.get("address", ""))
+            or search_query in str(o.get("product_name", ""))
         ]
 
     if filtered_orders:
-        # مرتب‌سازی: ابتدا تاریخ تحویل (صعودی)، سپس زمان ثبت سفارش (صعودی)
         sorted_orders = sorted(
             filtered_orders,
-            key=lambda x: (x.get("delivery_date", "9999/99/99"), x.get("order_created_at", "9999/99/99 99:99"))
+            key=lambda x: (str(x.get("delivery_date", "9999/99/99")), str(x.get("order_created_at", "9999/99/99 99:99")))
         )
 
         today_str = today_jalali.strftime("%Y/%m/%d")
 
-        # تفکیک سفارش‌های بایگانی: تاریخ گذشته یا تکمیل تمام چک‌باکس‌ها
+        # تفکیک سفارش‌های بایگانی: تاریخ گذشته یا تکمیل تمام ۵ چک‌باکس
         past_orders = [
             o for o in sorted_orders 
-            if o.get("delivery_date", "") < today_str or is_order_fully_checked(o)
+            if str(o.get("delivery_date", "")) < today_str or is_order_fully_checked(o)
         ]
         
-        # سفارش‌های فعال روی صفحه: آینده/امروز که هنوز تمام چک‌باکس‌ها تکمیل نشده‌اند
+        # سفارش‌های فعال روی صفحه: تاریخ امروز یا آینده که هنوز تمام چک‌باکس‌ها تکمیل نشده‌اند
         active_orders = [
             o for o in sorted_orders 
-            if o.get("delivery_date", "") >= today_str and not is_order_fully_checked(o)
+            if str(o.get("delivery_date", "")) >= today_str and not is_order_fully_checked(o)
         ]
 
         # گروه‌بندی سفارش‌های فعال بر اساس تاریخ تحویل
         date_groups = {}
         for o in active_orders:
-            d = o.get("delivery_date", "نامشخص")
+            d = str(o.get("delivery_date", "نامشخص"))
             if d not in date_groups:
                 date_groups[d] = []
             date_groups[d].append(o)
@@ -713,9 +719,9 @@ with tab_cards:
             today_tag = " — 🎯 تحویل امروز" if is_today else ""
             st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — {len(orders_in_date)} سفارش")
             for idx, order in enumerate(orders_in_date):
-                render_order_card(order, prefix=f"act_{d}_{idx}", is_archived=False)
+                render_order_card(order, prefix=f"act_{d.replace('/', '_')}_{idx}", is_archived=False)
 
-        # سفارش‌های گذشته و تکمیل‌شده در بایگانی
+        # سفارش‌های گذشته و تکمیل‌شده در باکس بایگانی
         if past_orders:
             with st.expander(f"📦 بایگانی سفارش‌های گذشته و تکمیل‌شده ({len(past_orders)} سفارش)"):
                 for idx, order in enumerate(past_orders):
@@ -782,7 +788,7 @@ with tab_cal:
 
     orders_map = {}
     for o in orders_list:
-        d = o.get("delivery_date", "")
+        d = str(o.get("delivery_date", ""))
         if d not in orders_map:
             orders_map[d] = []
         orders_map[d].append(o)

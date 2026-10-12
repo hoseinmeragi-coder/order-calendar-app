@@ -4,6 +4,7 @@ from datetime import datetime
 import jdatetime
 import gspread
 from google.oauth2.service_account import Credentials
+import base64
 
 # تنظیمات اولیه صفحه
 st.set_page_config(
@@ -275,6 +276,7 @@ def load_orders():
             o["chk_settle"] = _is_truthy(o.get("chk_settle", False))
             o["chk_pack"] = _is_truthy(o.get("chk_pack", False))
             o["chk_post"] = _is_truthy(o.get("chk_post", False))
+            o["order_image"] = o.get("order_image", "")
 
         if has_duplicates:
             save_orders(orders)
@@ -463,6 +465,9 @@ if st.session_state.show_new_order_modal or is_editing:
         desc_val = current_order.get("product_desc", "") if is_editing else ""
         f_product_desc = st.text_area("شرح محصول و جزئیات ساخت", value=desc_val, placeholder="ابعاد، رنگ، متریال، نحوه بسته‌بندی...")
 
+        # بخش آپلود تصویر سفارش
+        f_uploaded_image = st.file_uploader("🖼️ آپلود عکس سفارش مشتری (اختیاری)", type=["png", "jpg", "jpeg", "webp"])
+
         col_sub, col_cancel = st.columns([1, 1])
         with col_sub:
             btn_submit_label = "💾 ذخیره تغییرات سفارش" if is_editing else "✅ تایید و ثبت نهایی سفارش"
@@ -479,6 +484,15 @@ if st.session_state.show_new_order_modal or is_editing:
             f_init_pay = parse_int_price(f_init_raw)
             f_rem_pay = parse_int_price(f_rem_raw)
             now_jalali = jdatetime.datetime.now().strftime("%Y/%m/%d %H:%M")
+            
+            # تبدیل فایل تصویر به رشته base64
+            img_b64 = ""
+            if f_uploaded_image is not None:
+                img_bytes = f_uploaded_image.read()
+                img_b64 = base64.b64encode(img_bytes).decode("utf-8")
+            elif is_editing and current_order:
+                img_b64 = current_order.get("order_image", "")
+
             if is_editing:
                 for o in orders_list:
                     if str(o["id"]) == str(current_order["id"]):
@@ -497,7 +511,8 @@ if st.session_state.show_new_order_modal or is_editing:
                             "remaining_payment": f_rem_pay,
                             "total_price": f_init_pay + f_rem_pay,
                             "tracking_code": f_track_code if f_track_code else "ثبت نشده",
-                            "product_desc": f_product_desc
+                            "product_desc": f_product_desc,
+                            "order_image": img_b64
                         })
                         break
                 save_orders(orders_list)
@@ -525,6 +540,7 @@ if st.session_state.show_new_order_modal or is_editing:
                     "total_price": f_init_pay + f_rem_pay,
                     "tracking_code": f_track_code if f_track_code else "ثبت نشده",
                     "product_desc": f_product_desc,
+                    "order_image": img_b64,
                     "chk_deposit": False,
                     "chk_photo": False,
                     "chk_settle": False,
@@ -612,6 +628,12 @@ def render_order_card(order, prefix="card", is_archived=False):
             desc_val = str(order.get("product_desc", "")).strip()
             desc_part = f"<div style='font-size:0.83rem; color:#718096; margin-top:6px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
 
+            # رندر تصویر در صورت وجود
+            img_val = str(order.get("order_image", "")).strip()
+            img_html = ""
+            if img_val:
+                img_html = f"<div style='margin-top:10px;'><img src='data:image/jpeg;base64,{img_val}' style='max-width:180px; max-height:180px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover;'/></div>"
+
             card_html = (
                 f"<div class='order-card'>"
                 f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>"
@@ -634,6 +656,7 @@ def render_order_card(order, prefix="card", is_archived=False):
                 f"<span>💵 <b>جمع کل:</b> {tot_p:,.0f} تومان</span>"
                 f"</div>"
                 f"{desc_part}"
+                f"{img_html}"
                 f"</div>"
             )
             st.markdown(card_html, unsafe_allow_html=True)
@@ -715,7 +738,7 @@ with tab_cards:
             o for o in orders_list 
             if search_query in str(o.get("customer_name", "")) 
             or search_query in str(o.get("invoice_no", ""))
-            or search_query in str(o.get("destination_city", ""))
+            or search_city in str(o.get("destination_city", ""))
             or search_query in str(o.get("customer_id", ""))
             or search_query in str(o.get("phone", ""))
             or search_query in str(o.get("emergency_phone", ""))

@@ -240,7 +240,6 @@ def get_pricing_worksheet():
             return sh.worksheet(sheet_name)
         except Exception:
             continue
-    # اگر با نام‌های بالا پیدا نشد، در صورت وجود بیش از یک شیت، شیت دوم را برمی‌گرداند
     worksheets = sh.worksheets()
     if len(worksheets) > 1:
         return worksheets[1]
@@ -301,7 +300,6 @@ def load_pricing_catalog():
             p6_val = parse_int_price(row[col_p6]) if len(row) > col_p6 else 0
             p1_val = parse_int_price(row[col_p1]) if len(row) > col_p1 else 0
 
-            # اگر کالایی مثل باکس یا روبان فقط قیمت واحد پایه داشت و ستون‌های فروش صفر بودند
             if p1_val == 0 and p6_val == 0 and p12_val == 0 and base_unit > 0:
                 p1_val = base_unit
                 p6_val = base_unit
@@ -1191,18 +1189,45 @@ with tab_invoice:
 
         # بخش دوم: نمایش اقلام فاکتور و جمع‌بندی
         if st.session_state.invoice_cart:
-            st.markdown("#### 🛒 لیست اقلام فاکتور جاری")
+            hdr_col1, hdr_col2 = st.columns([4, 1.2])
+            with hdr_col1:
+                st.markdown("#### 🛒 لیست اقلام فاکتور جاری")
+            with hdr_col2:
+                if st.button("🔄 ریست و پاک کردن همه اقلام", key="reset_cart_top", use_container_width=True):
+                    st.session_state.invoice_cart = []
+                    st.rerun()
 
             for idx, item in enumerate(st.session_state.invoice_cart):
-                r_col1, r_col2, r_col3, r_col4, r_col5 = st.columns([2.5, 1.5, 1, 1.8, 0.7])
+                r_col1, r_col2, r_col3, r_col4, r_col5 = st.columns([2.4, 1.5, 1.1, 1.8, 0.6])
                 with r_col1:
-                    st.markdown(f"**{idx + 1}. {item['name']}** <span style='color:#718096; font-size:0.8rem;'>({item['category']})</span>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<div style='padding-top:8px;'><b>{idx + 1}. {item['name']}</b> <span style='color:#718096; font-size:0.8rem;'>({item['category']})</span></div>",
+                        unsafe_allow_html=True
+                    )
                 with r_col2:
-                    st.markdown(f"<span style='font-size:0.85rem; color:#4a5568;'>{item['sales_model']}</span>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<div style='padding-top:8px; font-size:0.85rem; color:#4a5568;'>{item['sales_model']}</div>",
+                        unsafe_allow_html=True
+                    )
                 with r_col3:
-                    st.markdown(f"**{item['qty']} عدد**")
+                    new_qty = st.number_input(
+                        "تعداد",
+                        min_value=1,
+                        value=int(item["qty"]),
+                        step=1,
+                        key=f"cart_qty_{idx}_{item['name']}",
+                        label_visibility="collapsed"
+                    )
+                    if new_qty != item["qty"]:
+                        st.session_state.invoice_cart[idx]["qty"] = int(new_qty)
+                        st.session_state.invoice_cart[idx]["total_price"] = int(new_qty) * int(item["unit_price"])
+                        st.session_state.invoice_cart[idx]["total_cost"] = int(new_qty) * int(item["unit_cost"])
+                        st.rerun()
                 with r_col4:
-                    st.markdown(f"واحد: `{item['unit_price']:,.0f}` ← **کل: `{item['total_price']:,.0f}` تومان**")
+                    st.markdown(
+                        f"<div style='padding-top:8px;'>واحد: <code>{item['unit_price']:,.0f}</code> ← <b>کل: <code>{item['total_price']:,.0f}</code> تومان</b></div>",
+                        unsafe_allow_html=True
+                    )
                 with r_col5:
                     if st.button("🗑️", key=f"del_inv_item_{idx}", help="حذف این ردیف"):
                         st.session_state.invoice_cart.pop(idx)
@@ -1210,16 +1235,19 @@ with tab_invoice:
 
             st.markdown("---")
 
-            # تنظیمات تخفیف، هزینه ارسال و مشخصات مشتری
-            c_adj1, c_adj2, c_adj3 = st.columns(3)
+            # تنظیمات تخفیف (درصدی و مبلغی)، هزینه ارسال و رند کردن
+            c_adj1, c_adj2, c_adj3, c_adj4 = st.columns([1.4, 1.2, 1.4, 1.2])
             with c_adj1:
                 inv_shipping_raw = st.text_input("📦 هزینه بسته‌بندی و ارسال (تومان)", value="0", key="inv_ship")
                 inv_shipping = parse_int_price(inv_shipping_raw)
             with c_adj2:
-                inv_discount_raw = st.text_input("🎁 مبلغ تخفیف (تومان)", value="0", key="inv_disc")
-                inv_discount = parse_int_price(inv_discount_raw)
+                inv_disc_pct = st.number_input("📊 تخفیف درصدی روی کل (%)", min_value=0.0, max_value=100.0, value=0.0, step=1.0, key="inv_disc_pct")
             with c_adj3:
-                round_prices = st.checkbox("✨ رند کردن مبالغ به هزار تومان", value=True)
+                inv_discount_raw = st.text_input("🎁 مبلغ تخفیف ثابت (تومان)", value="0", key="inv_disc")
+                inv_discount_fixed = parse_int_price(inv_discount_raw)
+            with c_adj4:
+                st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
+                round_prices = st.checkbox("✨ رند به هزار تومان", value=True)
 
             items_subtotal = sum(i["total_price"] for i in st.session_state.invoice_cart)
             items_total_cost = sum(i["total_cost"] for i in st.session_state.invoice_cart)
@@ -1227,7 +1255,20 @@ with tab_invoice:
             if round_prices:
                 items_subtotal = int(round(items_subtotal, -3))
 
-            grand_total = max(0, items_subtotal + inv_shipping - inv_discount)
+            # محاسبه تخفیف درصدی و جمع کل تخفیف
+            inv_discount_pct_amount = int(round(items_subtotal * (inv_disc_pct / 100.0)))
+            if round_prices and inv_discount_pct_amount > 0:
+                inv_discount_pct_amount = int(round(inv_discount_pct_amount, -3))
+
+            inv_discount_total = inv_discount_pct_amount + inv_discount_fixed
+
+            if inv_discount_pct_amount > 0:
+                st.caption(
+                    f"💡 معادل ریالی تخفیف **{inv_disc_pct:g}%**: **{inv_discount_pct_amount:,.0f} تومان** | "
+                    f"مجموع کل تخفیف اعمال‌شده: **{inv_discount_total:,.0f} تومان**"
+                )
+
+            grand_total = max(0, items_subtotal + inv_shipping - inv_discount_total)
             estimated_profit = grand_total - items_total_cost - inv_shipping
 
             # کارت‌های خلاصه مالی فاکتور
@@ -1288,8 +1329,10 @@ with tab_invoice:
                 invoice_text += f"💵 جمع اقلام: {items_subtotal:,.0f} تومان\n"
                 if inv_shipping > 0:
                     invoice_text += f"📦 هزینه بسته‌بندی و ارسال: {inv_shipping:,.0f} تومان\n"
-                if inv_discount > 0:
-                    invoice_text += f"🎁 تخفیف: {inv_discount:,.0f} تومان\n"
+                if inv_discount_pct_amount > 0:
+                    invoice_text += f"📊 تخفیف ({inv_disc_pct:g}%): {inv_discount_pct_amount:,.0f} تومان\n"
+                if inv_discount_fixed > 0:
+                    invoice_text += f"🎁 تخفیف ویژه: {inv_discount_fixed:,.0f} تومان\n"
                 invoice_text += f"✅ مبلغ کل قابل پرداخت: {grand_total:,.0f} تومان\n"
                 if inv_deposit > 0:
                     invoice_text += f"💰 پیش‌پرداخت (بیعانه): {inv_deposit:,.0f} تومان\n"
@@ -1327,8 +1370,8 @@ with tab_invoice:
                         detailed_desc = " | ".join([f"{i['name']} ({i['qty']} عدد - {i['sales_model']})" for i in st.session_state.invoice_cart])
                         if inv_shipping > 0:
                             detailed_desc += f" | ارسال: {inv_shipping:,.0f}"
-                        if inv_discount > 0:
-                            detailed_desc += f" | تخفیف: {inv_discount:,.0f}"
+                        if inv_discount_total > 0:
+                            detailed_desc += f" | تخفیف کل: {inv_discount_total:,.0f}"
 
                         new_id = get_next_id(orders_list)
                         new_inv_no = get_next_invoice_no(orders_list)

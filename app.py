@@ -11,245 +11,132 @@ from PIL import Image
 # تنظیمات اولیه صفحه
 st.set_page_config(
     page_title="مدیریت سفارش‌ها و تقویم ظرفیت (شمسی ابری)",
-    page_icon="⚡",
+    page_icon="📅",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# استایل اختصاصی فوق‌پیشرفته و مدرن (Modern Clean UI)
+# استایل اختصاصی راست‌‌چین (RTL) و کارت‌های مدرن + حل تداخل آیکون‌های Expander
 st.markdown("""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
-
-    :root {
-        --primary: #4f46e5;
-        --primary-light: #eef2ff;
-        --primary-hover: #4338ca;
-        --surface: #ffffff;
-        --bg-app: #f8fafc;
-        --border-color: #e2e8f0;
-        --border-subtle: #f1f5f9;
-        --text-main: #0f172a;
-        --text-muted: #64748b;
-        --success-bg: #ecfdf5;
-        --success-text: #047857;
-        --danger-bg: #fef2f2;
-        --danger-text: #b91c1c;
-        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 14px -2px rgba(0, 0, 0, 0.06);
-        --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08);
-        --radius-lg: 16px;
-        --radius-md: 12px;
-        --radius-sm: 8px;
-    }
-
+    
     html, body, [class*="css"], div, p, span, h1, h2, h3, h4, h5, h6, input, select, textarea, button {
-        font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        letter-spacing: -0.01em;
+        font-family: 'Vazirmatn', sans-serif !important;
     }
-
-    .stApp {
-        background-color: var(--bg-app);
-        direction: rtl;
-        text-align: right;
-    }
-
-    /* هدر اصلی اپلیکیشن */
-    h1 {
-        font-size: 1.75rem !important;
-        font-weight: 800 !important;
-        color: var(--text-main) !important;
-        margin-bottom: 1.5rem !important;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
+    
+    /* استثنا کردن آیکون‌های پیش‌فرض استریم‌لیت جهت عدم نمایش نام کد آیکون */
     [data-testid="stIconMaterial"], .material-symbols-rounded, .material-symbols-outlined {
         font-family: 'Material Symbols Rounded', 'Material Symbols Outlined' !important;
         direction: ltr !important;
     }
-
-    /* ورودی‌ها و المان‌های فرم */
-    .stTextInput input, .stTextArea textarea, .stSelectbox select, div[data-baseweb="select"] {
-        border-radius: var(--radius-md) !important;
-        border: 1px solid var(--border-color) !important;
-        background-color: #ffffff !important;
-        box-shadow: var(--shadow-sm) !important;
-        transition: all 0.2s ease-in-out !important;
-    }
-    .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: var(--primary) !important;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+    
+    .stApp {
+        direction: rtl;
+        text-align: right;
     }
 
-    /* دکمه‌ها */
     .stButton>button {
-        border-radius: var(--radius-md) !important;
-        font-weight: 600 !important;
-        padding: 0.55rem 1.25rem !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        box-shadow: var(--shadow-sm) !important;
-        border: 1px solid transparent !important;
-    }
-    .stButton>button:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-md) !important;
-    }
-    .stButton>button[kind="primary"] {
-        background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%) !important;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25) !important;
+        border-radius: 10px;
+        transition: all 0.3s ease;
     }
 
-    /* کارت‌های شاخص آمار (KPI Bento Cards) */
+    /* کارت‌های خلاصه آمار بالا */
     .metric-card {
         background: #ffffff;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        border-radius: var(--radius-lg);
-        padding: 18px 20px;
-        box-shadow: var(--shadow-md);
-        text-align: right;
-        position: relative;
-        overflow: hidden;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .metric-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-lg);
-    }
-    .metric-card::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100%;
-        height: 4px;
-        background: linear-gradient(90deg, #4f46e5, #06b6d4);
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        text-align: center;
+        margin-bottom: 10px;
     }
     .metric-label {
         font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--text-muted);
-        margin-bottom: 8px;
+        color: #718096;
+        margin-bottom: 6px;
     }
     .metric-value {
-        font-size: 1.45rem;
-        font-weight: 800;
-        color: var(--text-main);
-        letter-spacing: -0.02em;
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #2d3748;
     }
-
-    /* کارت سفارش اصلی */
+    
     .order-card {
-        background: #ffffff;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-        padding: 22px 24px 16px 24px;
-        border-right: 5px solid var(--primary);
-        box-shadow: var(--shadow-sm);
-        transition: border-color 0.2s ease;
-    }
-    .order-card:hover {
-        border-color: #cbd5e1;
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px 12px 0 0;
+        padding: 18px 18px 12px 18px;
+        border-right: 6px solid #3182ce;
+        border-bottom: 1px dashed #e2e8f0;
     }
     .order-steps-container {
-        background: #fbfcfe;
-        border: 1px solid var(--border-color);
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
         border-top: none;
-        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-        border-right: 5px solid var(--primary);
-        padding: 12px 24px 8px 24px;
-        margin-bottom: 22px;
-        box-shadow: var(--shadow-sm);
+        border-radius: 0 0 12px 12px;
+        border-right: 6px solid #3182ce;
+        padding: 8px 16px 4px 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
 
-    /* المان‌های تقویم ماهانه */
     .calendar-cell {
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 10px;
-        min-height: 120px;
-        margin-bottom: 10px;
-        background: #ffffff;
-        box-shadow: var(--shadow-sm);
-        transition: all 0.25s ease;
-        position: relative;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 8px;
+        min-height: 110px;
+        margin-bottom: 8px;
+        background-color: #ffffff;
+        transition: all 0.2s ease;
     }
     .calendar-cell:hover {
-        border-color: #94a3b8;
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
+        border-color: #3182ce;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
     }
     .cell-today {
-        border: 2px solid #4f46e5 !important;
-        background: #fdfdfe !important;
-        box-shadow: 0 0 12px rgba(79, 70, 229, 0.12) !important;
+        border: 2px solid #3182ce !important;
+        background-color: #ebf8ff;
     }
     .cell-full {
-        border-right: 4px solid #ef4444 !important;
-        background: #fffafa !important;
+        border-right: 5px solid #e53e3e !important;
+        background-color: #fff5f5;
     }
     .cell-available {
-        border-right: 4px solid #10b981 !important;
-        background: #f8fdfa !important;
+        border-right: 5px solid #38a169 !important;
+        background-color: #f0fff4;
     }
     .day-num {
-        font-weight: 700;
-        font-size: 1.1rem;
-        color: var(--text-main);
+        font-weight: bold;
+        font-size: 1.05rem;
+        margin-bottom: 4px;
+        color: #2d3748;
     }
     .order-badge {
-        font-size: 0.74rem;
-        font-weight: 500;
-        padding: 3px 8px;
-        border-radius: 6px;
-        margin-top: 5px;
+        font-size: 0.72rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-top: 3px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         display: block;
-        transition: transform 0.15s ease;
-    }
-    .order-badge:hover {
-        transform: scale(0.98);
     }
     .badge-paid {
-        background-color: var(--success-bg);
-        color: var(--success-text);
-        border: 1px solid rgba(16, 185, 129, 0.15);
+        background-color: #bee3f8;
+        color: #2b6cb0;
     }
     .badge-debt {
-        background-color: #fff7ed;
-        color: #c2410c;
-        border: 1px solid rgba(234, 88, 12, 0.15);
+        background-color: #feebc8;
+        color: #c05621;
     }
 
-    /* تب‌ها */
-    div[data-baseweb="tab-list"] {
-        gap: 8px !important;
-        border-bottom: 2px solid var(--border-color) !important;
-        padding-bottom: 4px !important;
-        margin-bottom: 20px !important;
-    }
-    div[data-baseweb="tab"] {
-        padding: 10px 18px !important;
-        border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
-        font-weight: 600 !important;
-        font-size: 0.95rem !important;
-        color: var(--text-muted) !important;
-    }
-    div[aria-selected="true"] {
-        color: var(--primary) !important;
-        border-bottom-color: var(--primary) !important;
-    }
-
-    /* اکوردیون (Expander) */
     div[data-testid="stExpander"] {
-        border: 1px solid var(--border-color) !important;
-        border-radius: var(--radius-lg) !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 12px !important;
         background: #ffffff !important;
-        box-shadow: var(--shadow-sm) !important;
-        margin-top: 18px !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important;
+        margin-top: 15px !important;
         overflow: hidden;
     }
     div[data-testid="stExpander"] summary {
@@ -259,26 +146,28 @@ st.markdown("""
         flex-direction: row-reverse !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 14px 20px !important;
-        font-weight: 700 !important;
-        color: var(--text-main) !important;
-        background: #f8fafc !important;
+        padding: 12px 18px !important;
+        font-weight: bold !important;
+        color: #334155 !important;
+    }
+    div[data-testid="stExpander"] summary svg {
+        margin: 0 !important;
     }
 
     @media (max-width: 768px) {
         .calendar-cell {
-            min-height: 90px;
-            padding: 6px;
+            min-height: 85px;
+            padding: 4px;
         }
         .day-num {
-            font-size: 0.92rem;
+            font-size: 0.9rem;
         }
         .order-badge {
-            font-size: 0.68rem;
-            padding: 2px 4px;
+            font-size: 0.65rem;
+            padding: 1px 3px;
         }
         .order-card {
-            padding: 16px;
+            padding: 12px;
         }
     }
 </style>
@@ -291,7 +180,7 @@ def parse_int_price(val):
         return 0
     clean_str = str(val).replace(",", "").replace("،", "").strip()
     try:
-        return int(float(clean_str))
+        return int(round(float(clean_str)))
     except Exception:
         return 0
 
@@ -340,6 +229,98 @@ def get_worksheet():
         return sh.worksheet("orders")
     except Exception:
         return sh.get_worksheet(0)
+
+def get_pricing_worksheet():
+    """دریافت شیت مربوط به قیمت‌گذاری محصولات از گوگل شیت"""
+    gc = get_gspread_client()
+    target = st.secrets["connections"]["gsheets"]["spreadsheet"].strip()
+    sh = gc.open_by_url(target) if target.startswith("http") else gc.open_by_key(target)
+    for sheet_name in ["آنالیز جامع", "pricing", "قیمت", "محصولات"]:
+        try:
+            return sh.worksheet(sheet_name)
+        except Exception:
+            continue
+    # اگر با نام‌های بالا پیدا نشد، در صورت وجود بیش از یک شیت، شیت دوم را برمی‌گرداند
+    worksheets = sh.worksheets()
+    if len(worksheets) > 1:
+        return worksheets[1]
+    return None
+
+@st.cache_data(ttl=120)
+def load_pricing_catalog():
+    """خواندن و پردازش جدول آنالیز جامع و قیمت‌گذاری محصولات از گوگل شیت"""
+    try:
+        ws = get_pricing_worksheet()
+        if ws is None:
+            return []
+        vals = ws.get_all_values()
+        if not vals or len(vals) < 2:
+            return []
+
+        header_idx = 0
+        for idx, row in enumerate(vals):
+            row_str = " ".join(str(c) for c in row)
+            if "نام" in row_str and ("مدل" in row_str or "قیمت" in row_str or "تعداد" in row_str):
+                header_idx = idx
+                break
+
+        headers = [str(h).strip() for h in vals[header_idx]]
+
+        def find_col(keywords, default_idx):
+            for i, h in enumerate(headers):
+                if any(k in h for k in keywords):
+                    return i
+            return default_idx
+
+        col_cat = 0
+        col_name = find_col(["نام", "مدل گل", "شرح"], 1)
+        col_base_unit = find_col(["قیمت واحد"], 3)
+        col_cost = find_col(["بهای تمام‌شده کل", "بهای تمام شده کل"], 16)
+        col_p12 = find_col(["بالای 12", "بالای ۱۲", "عمده"], 17)
+        col_p6 = find_col(["بیشتر از ۶", "بیشتر از 6"], 18)
+        col_p1 = find_col(["تک شاخه", "کمتر از 6", "کمتر از ۶"], 19)
+
+        catalog = []
+        current_category = "گل و شاخه گل"
+
+        for row in vals[header_idx + 1:]:
+            if not row or len(row) <= col_name:
+                continue
+            
+            cat_cell = str(row[col_cat]).strip() if len(row) > col_cat else ""
+            if cat_cell:
+                current_category = cat_cell
+
+            name_cell = str(row[col_name]).strip() if len(row) > col_name else ""
+            if not name_cell or name_cell in ["نام / مدل گل", "nan"]:
+                continue
+
+            base_unit = parse_int_price(row[col_base_unit]) if len(row) > col_base_unit else 0
+            cost_val = parse_int_price(row[col_cost]) if len(row) > col_cost else 0
+            p12_val = parse_int_price(row[col_p12]) if len(row) > col_p12 else 0
+            p6_val = parse_int_price(row[col_p6]) if len(row) > col_p6 else 0
+            p1_val = parse_int_price(row[col_p1]) if len(row) > col_p1 else 0
+
+            # اگر کالایی مثل باکس یا روبان فقط قیمت واحد پایه داشت و ستون‌های فروش صفر بودند
+            if p1_val == 0 and p6_val == 0 and p12_val == 0 and base_unit > 0:
+                p1_val = base_unit
+                p6_val = base_unit
+                p12_val = base_unit
+                if cost_val == 0:
+                    cost_val = base_unit
+
+            catalog.append({
+                "category": current_category,
+                "name": name_cell,
+                "cost": cost_val,
+                "price_single": p1_val,      # تک شاخه / کمتر از ۶ شاخه
+                "price_mid": p6_val,         # بیشتر از ۶ شاخه
+                "price_wholesale": p12_val   # عمده بالای ۱۲ شاخه
+            })
+
+        return catalog
+    except Exception as e:
+        return []
 
 def save_orders(orders):
     try:
@@ -430,6 +411,9 @@ if "show_new_order_modal" not in st.session_state:
 if "editing_order_id" not in st.session_state:
     st.session_state.editing_order_id = None
 
+if "invoice_cart" not in st.session_state:
+    st.session_state.invoice_cart = []
+
 today_jalali = jdatetime.date.today()
 
 month_names = [
@@ -443,7 +427,7 @@ def get_effective_remaining(o):
     return o.get("remaining_payment", 0)
 
 # ----------------- هدر و آمار کلیدی -----------------
-st.title("🎛️ داشبورد جامع سفارش‌ها و تقویم ظرفیت")
+st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")
 
 total_orders = len(orders_list)
 total_revenue = sum(o.get("total_price", 0) for o in orders_list)
@@ -453,33 +437,33 @@ m1, m2, m3, m4 = st.columns(4)
 with m1:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">📦 کل سفارش‌ها</div>
-        <div class="metric-value">{total_orders} <span style="font-size:0.9rem; font-weight:400; color:#64748b;">عدد</span></div>
+        <div class="metric-label">کل سفارش‌ها</div>
+        <div class="metric-value">{total_orders} عدد</div>
     </div>
     """, unsafe_allow_html=True)
 with m2:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">💳 مجموع ارزش سفارش‌ها</div>
-        <div class="metric-value">{total_revenue:,.0f} <span style="font-size:0.85rem; font-weight:400; color:#64748b;">تومان</span></div>
+        <div class="metric-label">مجموع ارزش سفارش‌ها</div>
+        <div class="metric-value">{total_revenue:,.0f} تومان</div>
     </div>
     """, unsafe_allow_html=True)
 with m3:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">⏳ مجموع مانده حساب‌ها</div>
-        <div class="metric-value">{pending_balance:,.0f} <span style="font-size:0.85rem; font-weight:400; color:#64748b;">تومان</span></div>
+        <div class="metric-label">مجموع مانده حساب‌ها</div>
+        <div class="metric-value">{pending_balance:,.0f} تومان</div>
     </div>
     """, unsafe_allow_html=True)
 with m4:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">📊 سقف ظرفیت روزانه</div>
-        <div class="metric-value">{DAILY_CAPACITY_LIMIT} <span style="font-size:0.85rem; font-weight:400; color:#64748b;">سفارش</span></div>
+        <div class="metric-label">سقف ظرفیت روزانه</div>
+        <div class="metric-value">{DAILY_CAPACITY_LIMIT} سفارش</div>
     </div>
     """, unsafe_allow_html=True)
 
-st.write("")
+st.markdown("---")
 
 # ----------------- دکمه ثبت سفارش جدید -----------------
 col_btn, _ = st.columns([1.5, 4])
@@ -498,7 +482,7 @@ if st.session_state.show_new_order_modal or is_editing:
         current_order = next((o for o in orders_list if str(o["id"]) == str(st.session_state.editing_order_id)), None)
 
     st.markdown("---")
-    title_box = "✏️ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"
+    title_box = "✏ ویرایش مشخصات سفارش" if is_editing else "📦 فرم ثبت سفارش مشتری جدید"
     st.subheader(title_box)
 
     with st.form("order_form", clear_on_submit=False):
@@ -538,7 +522,7 @@ if st.session_state.show_new_order_modal or is_editing:
             f_destination_city = st.text_input("شهر مقصد", value=city_default, placeholder="مثلاً: مشهد، تهران...")
 
         with c_date:
-            st.markdown("<p style='font-weight:600; font-size:0.9rem; margin-bottom:5px; color:#334155;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-weight:600; margin-bottom:5px;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)
             cd_d, cd_m, cd_y = st.columns([1, 1.5, 1.2])
             
             d_def, m_def, y_def = today_jalali.day, today_jalali.month, today_jalali.year
@@ -680,7 +664,11 @@ if st.session_state.show_new_order_modal or is_editing:
 st.markdown("---")
 
 # ----------------- تب‌های برنامه -----------------
-tab_cards, tab_cal = st.tabs(["👥 کارت‌های مشتریان و سفارش‌ها", "📅 تقویم شمسی ظرفیت و زمان‌بندی"])
+tab_cards, tab_cal, tab_invoice = st.tabs([
+    "👥 کارت‌های مشتریان و سفارش‌ها",
+    "📅 تقویم شمسی ظرفیت و زمان‌بندی",
+    "🧾 صدور فاکتور و محاسبه قیمت"
+])
 
 def is_order_fully_checked(order):
     return (
@@ -730,20 +718,20 @@ def render_order_card(order, prefix="card", is_archived=False):
             contact_display = phone_val if phone_val else (cid_val if cid_val else "-")
             
             em_val = str(order.get("emergency_phone", "")).strip()
-            em_part = f"<span style='background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:6px;'>🚨 <b>اضطراری:</b> {em_val}</span>" if em_val else ""
+            em_part = f"<span>🚨 <b>اضطراری:</b> {em_val}</span>" if em_val else ""
 
             post_val = str(order.get("postal_code", "")).strip()
             post_part = f"<span>📮 <b>کد پستی:</b> {post_val}</span>" if post_val else ""
 
             addr_val = str(order.get("address", "")).strip()
-            addr_part = f"<div style='font-size:0.87rem; color:#475569; margin-top:8px; line-height:1.6;'>🏠 <b>آدرس:</b> {addr_val}</div>" if addr_val else ""
+            addr_part = f"<div style='font-size:0.85rem; color:#4a5568; margin-top:6px;'>🏠 <b>آدرس:</b> {addr_val}</div>" if addr_val else ""
 
             init_p = order.get("initial_payment", 0)
             
             is_settled = _is_truthy(order.get("chk_settle", False))
             rem_p = 0 if is_settled else order.get("remaining_payment", 0)
             tot_p = order.get("total_price", 0)
-            debt_color = "#10b981" if rem_p == 0 else "#ef4444"
+            debt_color = "#38a169" if rem_p == 0 else "#e53e3e"
 
             desc_val = str(order.get("product_desc", "")).strip()
 
@@ -753,23 +741,23 @@ def render_order_card(order, prefix="card", is_archived=False):
 
             if has_img:
                 bottom_section = (
-                    f"<div style='display:flex; gap:16px; align-items:flex-start; margin-top:12px; background:#f8fafc; padding:12px; border-radius:12px; border:1px solid #e2e8f0;'>"
-                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:120px; min-width:120px; border-radius:10px; border:1px solid #cbd5e1; object-fit:cover; box-shadow:0 2px 6px rgba(0,0,0,0.06);'/>"
-                    f"<div style='flex:1; font-size:0.87rem; color:#334155; line-height:1.7;'>"
-                    f"<span style='font-weight:700; color:#1e293b;'>📝 توضیحات و جزئیات ساخت:</span><br/>{desc_val if desc_val else '<i>بدون توضیحات اضافی</i>'}"
+                    f"<div style='display:flex; gap:14px; align-items:flex-start; margin-top:10px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #edf2f7;'>"
+                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:120px; min-width:120px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover;'/>"
+                    f"<div style='flex:1; font-size:0.85rem; color:#4a5568; line-height:1.6;'>"
+                    f"📝 <b>توضیحات و جزئیات ساخت:</b><br/>{desc_val if desc_val else '<i>بدون توضیحات</i>'}"
                     f"</div>"
                     f"</div>"
                 )
             else:
-                bottom_section = f"<div style='font-size:0.85rem; color:#64748b; margin-top:8px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
+                bottom_section = f"<div style='font-size:0.83rem; color:#718096; margin-top:6px;'>📝 <i>توضیحات:</i> {desc_val}</div>" if desc_val else ""
 
             card_html = (
                 f"<div class='order-card'>"
-                f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;'>"
-                f"<span style='font-weight:800; font-size:1.15rem; color:#0f172a;'>👤 {c_name}{c_id_tag} <span style='font-size:0.82rem; font-weight:600; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:6px; margin-right:6px;'>{inv_no}</span></span>"
+                f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>"
+                f"<span style='font-weight:bold; font-size:1.15rem; color:#2d3748;'>👤 {c_name}{c_id_tag} <span style='font-size:0.85rem; color:#718096;'>({inv_no})</span></span>"
                 f"</div>"
-                f"<div style='display:flex; gap:18px; flex-wrap:wrap; font-size:0.88rem; color:#475569; margin-bottom:8px;'>"
-                f"<span>🏷️ <b>محصول:</b> <span style='color:#0f172a;'>{prod_display}</span></span>"
+                f"<div style='display:flex; gap:20px; flex-wrap:wrap; font-size:0.9rem; color:#4a5568; margin-bottom:8px;'>"
+                f"<span>🏷️ <b>محصول:</b> {prod_display}</span>"
                 f"<span>📍 <b>مقصد:</b> {city}</span>"
                 f"<span>📞 <b>تماس:</b> {contact_display}</span>"
                 f"{em_part}"
@@ -779,10 +767,10 @@ def render_order_card(order, prefix="card", is_archived=False):
                 f"<span>📦 <b>کد رهگیری:</b> {track_no}</span>"
                 f"</div>"
                 f"{addr_part}"
-                f"<div style='display:flex; gap:20px; flex-wrap:wrap; font-size:0.88rem; background:#f8fafc; padding:10px 14px; border-radius:10px; margin-top:10px; border:1px solid #f1f5f9;'>"
+                f"<div style='display:flex; gap:25px; flex-wrap:wrap; font-size:0.88rem; background:#f7fafc; padding:8px 12px; border-radius:8px; margin-top:8px;'>"
                 f"<span>💰 <b>پیش‌پرداخت:</b> {init_p:,.0f} تومان</span>"
-                f"<span>⚖️ <b>مانده تسویه:</b> <b style='color:{debt_color}; font-size:0.95rem;'>{rem_p:,.0f} تومان</b></span>"
-                f"<span>💵 <b>جمع کل:</b> <b style='color:#0f172a;'>{tot_p:,.0f} تومان</b></span>"
+                f"<span>⚖️ <b>مانده تسویه:</b> <b style='color:{debt_color};'>{rem_p:,.0f} تومان</b></span>"
+                f"<span>💵 <b>جمع کل:</b> {tot_p:,.0f} تومان</span>"
                 f"</div>"
                 f"{bottom_section}"
                 f"</div>"
@@ -854,7 +842,7 @@ def render_order_card(order, prefix="card", is_archived=False):
 
 # ----------------- تب ۱: کارت‌های مشتریان -----------------
 with tab_cards:
-    col_t2, col_t1 = st.columns([1.2, 2.8])
+    col_t2, col_t1 = st.columns([1, 3])
     with col_t1:
         st.subheader("📋 مدیریت پرونده‌های مشتریان")
     with col_t2:
@@ -906,7 +894,7 @@ with tab_cards:
             orders_in_date = date_groups[d]
             is_today = (d == today_str)
             today_tag = " — 🎯 تحویل امروز" if is_today else ""
-            st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — `{len(orders_in_date)} سفارش`")
+            st.markdown(f"#### 📅 سفارش‌های تاریخ {d}{today_tag} — {len(orders_in_date)} سفارش")
             for idx, order in enumerate(orders_in_date):
                 render_order_card(order, prefix=f"act_{d.replace('/', '_')}_{idx}", is_archived=False)
 
@@ -950,7 +938,7 @@ with tab_cal:
             st.rerun()
 
     with col_nav2:
-        st.markdown(f"<h3 style='text-align: center; margin:0; font-weight:800; color:#1e293b;'>{month_names[st.session_state.cal_month - 1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='text-align: center; margin:0;'>{month_names[st.session_state.cal_month - 1]} {st.session_state.cal_year}</h3>", unsafe_allow_html=True)
 
     with col_nav3:
         if st.button("ماه بعد ➡️", use_container_width=True, key="next_m"):
@@ -992,7 +980,7 @@ with tab_cal:
             if day_orders:
                 found_any = True
                 is_today = (current_year == today_jalali.year and current_month == today_jalali.month and day == today_jalali.day)
-                today_tag = " <span style='color:#4f46e5; font-size:0.85rem; font-weight:700;'>(امروز)</span>" if is_today else ""
+                today_tag = " <span style='color:#3182ce; font-size:0.85rem;'>(امروز)</span>" if is_today else ""
                 st.markdown(f"**📌 {day} {month_names[current_month - 1]} {current_year}** {today_tag} — `{len(day_orders)}/{DAILY_CAPACITY_LIMIT} سفارش`", unsafe_allow_html=True)
                 for item in day_orders:
                     item_rem = get_effective_remaining(item)
@@ -1003,11 +991,11 @@ with tab_cal:
                     strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""
                     
                     st.markdown(f"""
-                    <div style='background:#ffffff; border:1px solid #e2e8f0; border-right:4px solid #4f46e5; padding:10px 14px; border-radius:10px; margin-bottom:8px; font-size:0.88rem; box-shadow:0 1px 3px rgba(0,0,0,0.03); {strike_style}'>
+                    <div style='background:#f8fafc; border-right:4px solid #3182ce; padding:8px 12px; border-radius:6px; margin-bottom:6px; font-size:0.85rem; {strike_style}'>
                         📦 <b>{item.get('customer_name')}{item_cid}</b> | مقصد: {item.get('destination_city')} | مانده: {item_rem:,.0f} تومان
                     </div>
                     """, unsafe_allow_html=True)
-                st.markdown("<hr style='margin:12px 0; border:0; border-top:1px solid #f1f5f9;'>", unsafe_allow_html=True)
+                st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
         if not found_any:
             st.caption("در این ماه هیچ سفارشی ثبت نشده است.")
 
@@ -1015,7 +1003,7 @@ with tab_cal:
         weekdays_fa = ["شنبه", "۱شنبه", "۲شنبه", "۳شنبه", "۴شنبه", "۵شنبه", "جمعه"]
         cols_header = st.columns(7)
         for idx, day_name in enumerate(weekdays_fa):
-            cols_header[idx].markdown(f"<div style='text-align:center; font-weight:700; color:#475569; background:#f1f5f9; padding:8px 4px; border-radius:8px; font-size:0.88rem;'>{day_name}</div>", unsafe_allow_html=True)
+            cols_header[idx].markdown(f"<div style='text-align:center; font-weight:bold; background:#edf2f7; padding:6px; border-radius:6px;'>{day_name}</div>", unsafe_allow_html=True)
 
         day_counter = 1
         total_slots = start_weekday + days_in_month
@@ -1027,7 +1015,7 @@ with tab_cal:
                 current_slot = row * 7 + col_idx
                 with cols[col_idx]:
                     if current_slot < start_weekday or day_counter > days_in_month:
-                        st.markdown("<div style='min-height:120px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='min-height:110px;'></div>", unsafe_allow_html=True)
                     else:
                         date_key = f"{current_year}/{current_month:02d}/{day_counter:02d}"
                         day_orders = orders_map.get(date_key, [])
@@ -1047,11 +1035,11 @@ with tab_cal:
 
                         capacity_badge = ""
                         if is_full:
-                            capacity_badge = f"<span style='color:#ef4444; font-size:0.75rem; font-weight:800;'>🚨 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
+                            capacity_badge = f"<span style='color:#e53e3e; font-size:0.75rem; font-weight:bold;'>🚨 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
                         elif has_orders:
-                            capacity_badge = f"<span style='color:#10b981; font-size:0.75rem; font-weight:700;'>🟢 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
+                            capacity_badge = f"<span style='color:#38a169; font-size:0.75rem;'>🟢 ({order_count}/{DAILY_CAPACITY_LIMIT})</span>"
                         else:
-                            capacity_badge = "<span style='color:#94a3b8; font-size:0.72rem;'>خالی</span>"
+                            capacity_badge = "<span style='color:#a0aec0; font-size:0.72rem;'>خالی</span>"
 
                         orders_html = ""
                         for item in day_orders[:3]:
@@ -1066,7 +1054,7 @@ with tab_cal:
                             orders_html += f"<div class='order-badge {badge_class}' style='{strike_style}' title='{p_title}'>📦 {item['customer_name']}{item_cid} ({item['destination_city']})</div>"
                         
                         if len(day_orders) > 3:
-                            orders_html += f"<div style='font-size:0.7rem; color:#64748b; font-weight:600; margin-top:2px;'>+ {len(day_orders)-3} سفارش دیگر...</div>"
+                            orders_html += f"<div style='font-size:0.7rem; color:#718096;'>+ {len(day_orders)-3} مورد دیگر...</div>"
 
                         st.markdown(f"""
                         <div class="{' '.join(cell_classes)}">
@@ -1079,3 +1067,307 @@ with tab_cal:
                         """, unsafe_allow_html=True)
                         
                         day_counter += 1
+
+# ----------------- تب ۳: صدور فاکتور و محاسبه قیمت -----------------
+with tab_invoice:
+    st.subheader("🧾 صدور فاکتور مشتریان (متصل به شیت آنالیز جامع)")
+
+    catalog = load_pricing_catalog()
+
+    col_reload, _ = st.columns([1.5, 4.5])
+    with col_reload:
+        if st.button("🔄 بروزرسانی قیمت‌ها از گوگل شیت", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+
+    if not catalog:
+        st.warning(
+            "⚠️ شیت قیمت‌گذاری در گوگل شیت یافت نشد یا خالی است. "
+            "لطفاً محتوای فایل اکسل «آنالیز جامع» را در یک شیت (Tab) جدید به نام **آنالیز جامع** (یا **pricing**) در کنار شیت orders کپی کنید."
+        )
+    else:
+        # بخش اول: انتخاب محصول و افزودن به فاکتور
+        st.markdown("#### ➕ افزودن ردیف به فاکتور")
+        
+        categories = ["همه دسته‌ها"] + list(dict.fromkeys([item["category"] for item in catalog if item.get("category")]))
+        
+        ic1, ic2, ic3, ic4 = st.columns([1.2, 2.2, 1.8, 1])
+        with ic1:
+            sel_cat = st.selectbox("دسته‌بندی محصول", categories, key="inv_cat")
+        
+        filtered_catalog = [
+            item for item in catalog 
+            if sel_cat == "همه دسته‌ها" or item["category"] == sel_cat
+        ]
+        product_names = [item["name"] for item in filtered_catalog]
+
+        with ic2:
+            sel_prod_name = st.selectbox("انتخاب محصول / مدل گل", product_names, key="inv_prod")
+        
+        selected_prod = next((item for item in filtered_catalog if item["name"] == sel_prod_name), None)
+
+        sales_models = [
+            "تک شاخه / کمتر از ۶ شاخه",
+            "بیشتر از ۶ شاخه",
+            "فروش عمده (بالای ۱۲ شاخه)",
+            "قیمت دستی / توافقی"
+        ]
+        with ic3:
+            sel_model = st.selectbox("مدل فروش", sales_models, key="inv_model")
+        
+        with ic4:
+            sel_qty = st.number_input("تعداد", min_value=1, value=1, step=1, key="inv_qty")
+
+        # تعیین قیمت واحد بر اساس مدل فروش انتخاب شده
+        default_unit_price = 0
+        unit_cost = 0
+        if selected_prod:
+            unit_cost = selected_prod.get("cost", 0)
+            if sel_model == "تک شاخه / کمتر از ۶ شاخه":
+                default_unit_price = selected_prod.get("price_single", 0)
+            elif sel_model == "بیشتر از ۶ شاخه":
+                default_unit_price = selected_prod.get("price_mid", 0)
+            elif sel_model == "فروش عمده (بالای ۱۲ شاخه)":
+                default_unit_price = selected_prod.get("price_wholesale", 0)
+
+        ic_p1, ic_p2, ic_btn = st.columns([2, 2.2, 1.5])
+        with ic_p1:
+            if sel_model == "قیمت دستی / توافقی" or default_unit_price == 0:
+                manual_price_str = st.text_input(
+                    "قیمت واحد (تومان)",
+                    value=f"{default_unit_price:,}" if default_unit_price > 0 else "",
+                    placeholder="مثلاً: 250,000",
+                    key="inv_manual_p"
+                )
+                final_unit_price = parse_int_price(manual_price_str)
+            else:
+                final_unit_price = default_unit_price
+                st.markdown(
+                    f"<div style='background:#f0fff4; border:1px solid #c6f6d5; padding:10px 14px; border-radius:8px; margin-top:24px;'>"
+                    f"💵 <b>قیمت واحد مصوب:</b> {final_unit_price:,.0f} تومان"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
+        with ic_p2:
+            line_total = final_unit_price * sel_qty
+            if selected_prod:
+                st.markdown(
+                    f"<div style='background:#ebf8ff; border:1px solid #bee3f8; padding:10px 14px; border-radius:8px; margin-top:24px;'>"
+                    f"🧮 <b>جمع این ردیف ({sel_qty} عدد):</b> {line_total:,.0f} تومان"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
+        with ic_btn:
+            st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
+            if st.button("➕ افزودن به فاکتور", use_container_width=True, type="primary"):
+                if selected_prod and final_unit_price > 0:
+                    st.session_state.invoice_cart.append({
+                        "category": selected_prod["category"],
+                        "name": selected_prod["name"],
+                        "sales_model": sel_model,
+                        "qty": int(sel_qty),
+                        "unit_price": int(final_unit_price),
+                        "total_price": int(line_total),
+                        "unit_cost": int(unit_cost),
+                        "total_cost": int(unit_cost * sel_qty)
+                    })
+                    st.rerun()
+                else:
+                    st.error("لطفاً قیمت واحد معتبر وارد کنید.")
+
+        # نمایش نرخ‌های مرجع محصول انتخاب شده برای اطلاع سریع کاربر
+        if selected_prod:
+            st.caption(
+                f"📊 **نرخ‌های مرجع «{selected_prod['name']}» در اکسل:** "
+                f"تک‌شاخه (کمتر از ۶): `{selected_prod['price_single']:,.0f}` تومان | "
+                f"بیش از ۶ شاخه: `{selected_prod['price_mid']:,.0f}` تومان | "
+                f"عمده (بالای ۱۲): `{selected_prod['price_wholesale']:,.0f}` تومان | "
+                f"بهای تمام‌شده: `{selected_prod['cost']:,.0f}` تومان"
+            )
+
+        st.markdown("---")
+
+        # بخش دوم: نمایش اقلام فاکتور و جمع‌بندی
+        if st.session_state.invoice_cart:
+            st.markdown("#### 🛒 لیست اقلام فاکتور جاری")
+
+            for idx, item in enumerate(st.session_state.invoice_cart):
+                r_col1, r_col2, r_col3, r_col4, r_col5 = st.columns([2.5, 1.5, 1, 1.8, 0.7])
+                with r_col1:
+                    st.markdown(f"**{idx + 1}. {item['name']}** <span style='color:#718096; font-size:0.8rem;'>({item['category']})</span>", unsafe_allow_html=True)
+                with r_col2:
+                    st.markdown(f"<span style='font-size:0.85rem; color:#4a5568;'>{item['sales_model']}</span>", unsafe_allow_html=True)
+                with r_col3:
+                    st.markdown(f"**{item['qty']} عدد**")
+                with r_col4:
+                    st.markdown(f"واحد: `{item['unit_price']:,.0f}` ← **کل: `{item['total_price']:,.0f}` تومان**")
+                with r_col5:
+                    if st.button("🗑️", key=f"del_inv_item_{idx}", help="حذف این ردیف"):
+                        st.session_state.invoice_cart.pop(idx)
+                        st.rerun()
+
+            st.markdown("---")
+
+            # تنظیمات تخفیف، هزینه ارسال و مشخصات مشتری
+            c_adj1, c_adj2, c_adj3 = st.columns(3)
+            with c_adj1:
+                inv_shipping_raw = st.text_input("📦 هزینه بسته‌بندی و ارسال (تومان)", value="0", key="inv_ship")
+                inv_shipping = parse_int_price(inv_shipping_raw)
+            with c_adj2:
+                inv_discount_raw = st.text_input("🎁 مبلغ تخفیف (تومان)", value="0", key="inv_disc")
+                inv_discount = parse_int_price(inv_discount_raw)
+            with c_adj3:
+                round_prices = st.checkbox("✨ رند کردن مبالغ به هزار تومان", value=True)
+
+            items_subtotal = sum(i["total_price"] for i in st.session_state.invoice_cart)
+            items_total_cost = sum(i["total_cost"] for i in st.session_state.invoice_cart)
+
+            if round_prices:
+                items_subtotal = int(round(items_subtotal, -3))
+
+            grand_total = max(0, items_subtotal + inv_shipping - inv_discount)
+            estimated_profit = grand_total - items_total_cost - inv_shipping
+
+            # کارت‌های خلاصه مالی فاکتور
+            mc1, mc2, mc3, mc4 = st.columns(4)
+            with mc1:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label">جمع اقلام فاکتور</div>
+                    <div class="metric-value">{items_subtotal:,.0f} تومان</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with mc2:
+                st.markdown(f"""
+                <div class="metric-card" style="border-color:#3182ce; background:#ebf8ff;">
+                    <div class="metric-label" style="color:#2b6cb0;">مبلغ قابل پرداخت نهایی</div>
+                    <div class="metric-value" style="color:#2b6cb0;">{grand_total:,.0f} تومان</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with mc3:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label">بهای تمام‌شده اقلام (داخلی)</div>
+                    <div class="metric-value">{items_total_cost:,.0f} تومان</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with mc4:
+                st.markdown(f"""
+                <div class="metric-card" style="border-color:#38a169; background:#f0fff4;">
+                    <div class="metric-label" style="color:#2f855a;">سود خالص تخمینی</div>
+                    <div class="metric-value" style="color:#2f855a;">{estimated_profit:,.0f} تومان</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # بخش سوم: تولید متن فاکتور برای مشتری و ثبت مستقیم در سفارش‌ها
+            st.markdown("#### 📤 خروجی فاکتور مشتری و ثبت در سفارش‌ها")
+            col_out1, col_out2 = st.columns([2.5, 2.5])
+
+            with col_out1:
+                inv_cust_name = st.text_input("نام مشتری (جهت درج در فاکتور)", placeholder="مثلاً: سرکار خانم محمدی", key="inv_c_name")
+                inv_deposit_raw = st.text_input("مبلغ بیعانه دریافتی (تومان)", value="0", key="inv_dep")
+                inv_deposit = parse_int_price(inv_deposit_raw)
+                inv_rem = max(0, grand_total - inv_deposit)
+
+                # ساخت متن فاکتور آماده کپی برای تلگرام / اینستاگرام / واتساپ
+                lines_text = []
+                for idx, item in enumerate(st.session_state.invoice_cart):
+                    u_p = int(round(item['unit_price'], -3)) if round_prices else item['unit_price']
+                    t_p = int(round(item['total_price'], -3)) if round_prices else item['total_price']
+                    lines_text.append(f"🔸 {idx+1}. {item['name']} ({item['qty']} عدد × {u_p:,.0f}) = {t_p:,.0f} تومان")
+
+                invoice_text = f"🧾 پیش‌فاکتور سفارش\n"
+                if inv_cust_name:
+                    invoice_text += f"👤 مشتری گرامی: {inv_cust_name}\n"
+                invoice_text += f"📅 تاریخ: {today_jalali.strftime('%Y/%m/%d')}\n"
+                invoice_text += "────────────────────\n"
+                invoice_text += "\n".join(lines_text) + "\n"
+                invoice_text += "────────────────────\n"
+                invoice_text += f"💵 جمع اقلام: {items_subtotal:,.0f} تومان\n"
+                if inv_shipping > 0:
+                    invoice_text += f"📦 هزینه بسته‌بندی و ارسال: {inv_shipping:,.0f} تومان\n"
+                if inv_discount > 0:
+                    invoice_text += f"🎁 تخفیف: {inv_discount:,.0f} تومان\n"
+                invoice_text += f"✅ مبلغ کل قابل پرداخت: {grand_total:,.0f} تومان\n"
+                if inv_deposit > 0:
+                    invoice_text += f"💰 پیش‌پرداخت (بیعانه): {inv_deposit:,.0f} تومان\n"
+                    invoice_text += f"⚖️ مانده قابل تسویه: {inv_rem:,.0f} تومان\n"
+
+                st.text_area("📋 متن آماده فاکتور (جهت ارسال به مشتری):", value=invoice_text, height=220)
+
+            with col_out2:
+                st.markdown("##### 🚀 تبدیل مستقیم این فاکتور به سفارش فعال")
+                st.caption("با تکمیل اطلاعات زیر، این فاکتور مستقیماً به تب سفارش‌ها و تقویم شمسی اضافه می‌شود.")
+                reg_city = st.text_input("شهر مقصد", placeholder="مثلاً: قم، تهران...", key="inv_reg_city")
+                reg_phone = st.text_input("شماره تماس / آیدی مشتری", placeholder="0912... یا @username", key="inv_reg_phone")
+                
+                rc_d, rc_m, rc_y = st.columns(3)
+                with rc_d:
+                    reg_day = st.selectbox("روز تحویل", list(range(1, 32)), index=min(today_jalali.day - 1, 30), key="inv_d")
+                with rc_m:
+                    reg_m_name = st.selectbox("ماه تحویل", month_names, index=today_jalali.month - 1, key="inv_m")
+                    reg_month = month_names.index(reg_m_name) + 1
+                with rc_y:
+                    reg_year = st.selectbox("سال تحویل", [today_jalali.year, today_jalali.year + 1], index=0, key="inv_y")
+
+                btn_reg_col, btn_clr_col = st.columns([2, 1])
+                with btn_reg_col:
+                    if st.button("✅ ثبت فاکتور در لیست سفارش‌ها", use_container_width=True, type="primary"):
+                        try:
+                            deliv_j = jdatetime.date(reg_year, reg_month, reg_day).strftime("%Y/%m/%d")
+                        except ValueError:
+                            deliv_j = jdatetime.date(reg_year, reg_month, 29).strftime("%Y/%m/%d")
+
+                        summary_title = " + ".join([f"{i['qty']}×{i['name']}" for i in st.session_state.invoice_cart[:2]])
+                        if len(st.session_state.invoice_cart) > 2:
+                            summary_title += f" و {len(st.session_state.invoice_cart) - 2} مورد دیگر"
+
+                        detailed_desc = " | ".join([f"{i['name']} ({i['qty']} عدد - {i['sales_model']})" for i in st.session_state.invoice_cart])
+                        if inv_shipping > 0:
+                            detailed_desc += f" | ارسال: {inv_shipping:,.0f}"
+                        if inv_discount > 0:
+                            detailed_desc += f" | تخفیف: {inv_discount:,.0f}"
+
+                        new_id = get_next_id(orders_list)
+                        new_inv_no = get_next_invoice_no(orders_list)
+                        now_j = jdatetime.datetime.now().strftime("%Y/%m/%d %H:%M")
+
+                        new_order = {
+                            "id": new_id,
+                            "invoice_no": new_inv_no,
+                            "customer_id": reg_phone if reg_phone.startswith("@") else "",
+                            "customer_name": inv_cust_name if inv_cust_name else "مشتری فاکتور",
+                            "phone": reg_phone if not reg_phone.startswith("@") else "",
+                            "emergency_phone": "",
+                            "address": "",
+                            "postal_code": "",
+                            "destination_city": reg_city if reg_city else "-",
+                            "product_name": summary_title,
+                            "delivery_date": deliv_j,
+                            "order_created_at": now_j,
+                            "initial_payment": inv_deposit,
+                            "remaining_payment": inv_rem,
+                            "total_price": grand_total,
+                            "tracking_code": "ثبت نشده",
+                            "product_desc": detailed_desc,
+                            "order_image": "",
+                            "chk_deposit": bool(inv_deposit > 0),
+                            "chk_photo": False,
+                            "chk_settle": bool(inv_rem == 0 and grand_total > 0),
+                            "chk_pack": False,
+                            "chk_post": False
+                        }
+                        orders_list.append(new_order)
+                        save_orders(orders_list)
+                        st.session_state.invoice_cart = []
+                        st.success(f"فاکتور {new_inv_no} با موفقیت در سفارش‌ها ثبت شد!")
+                        st.rerun()
+
+                with btn_clr_col:
+                    if st.button("🗑️ پاک کردن فاکتور", use_container_width=True):
+                        st.session_state.invoice_cart = []
+                        st.rerun()
+        else:
+            st.info("سبد فاکتور خالی است. از بخش بالا محصول و مدل فروش را انتخاب کرده و دکمه «افزودن به فاکتور» را بزنید.")

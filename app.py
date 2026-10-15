@@ -1275,7 +1275,10 @@ with tab_invoice:
                         "unit_price": int(final_unit_price),
                         "total_price": int(line_total),
                         "unit_cost": int(unit_cost),
-                        "total_cost": int(unit_cost * sel_qty)
+                        "total_cost": int(unit_cost * sel_qty),
+                        "price_single": selected_prod.get("price_single", final_unit_price),
+                        "price_mid": selected_prod.get("price_mid", final_unit_price),
+                        "price_wholesale": selected_prod.get("price_wholesale", final_unit_price)
                     })
                     st.rerun()
                 else:
@@ -1312,7 +1315,7 @@ with tab_invoice:
                     )
                 with r_col2:
                     st.markdown(
-                        f"<div style='padding-top:8px; font-size:0.85rem; color:#4a5568;'>{item['sales_model']}</div>",
+                        f"<div style='padding-top:8px; font-size:0.85rem; color:#4a5568;'>{item.get('sales_model', 'تک شاخه')}</div>",
                         unsafe_allow_html=True
                     )
                 with r_col3:
@@ -1327,7 +1330,7 @@ with tab_invoice:
                     if new_qty != item["qty"]:
                         st.session_state.invoice_cart[idx]["qty"] = int(new_qty)
                         st.session_state.invoice_cart[idx]["total_price"] = int(new_qty) * int(item["unit_price"])
-                        st.session_state.invoice_cart[idx]["total_cost"] = int(new_qty) * int(item["unit_cost"])
+                        st.session_state.invoice_cart[idx]["total_cost"] = int(new_qty) * int(item.get("unit_cost", 0))
                         st.rerun()
                 with r_col4:
                     st.markdown(
@@ -1356,6 +1359,58 @@ with tab_invoice:
 
             st.markdown("---")
 
+            # --- فیلد تعیین مدل قیمت‌گذاری کل فاکتور ---
+            st.markdown("##### 🏷️ تعیین سطح قیمت برای کل اقلام فاکتور:")
+            global_pricing_mode = st.radio(
+                "تعیین سطح قیمت برای کل اقلام فاکتور:",
+                options=[
+                    "حالت پیش‌فرض / انتخاب‌شده در ردیف‌ها",
+                    "تک شاخه / کمتر از ۶ شاخه",
+                    "بیشتر از ۶ شاخه",
+                    "فروش عمده (بالای ۱۲ شاخه)"
+                ],
+                horizontal=True,
+                key="global_inv_pricing_mode",
+                label_visibility="collapsed"
+            )
+
+            # محاسبه مبالغ هر ردیف و جمع نهایی بر اساس سطح قیمت انتخابی
+            calculated_items = []
+            for item in st.session_state.invoice_cart:
+                # پیدا کردن محصول در کاتالوگ در صورت نبود قیمت‌های مرجع در الگوهای قدیمی
+                cat_prod = next((p for p in catalog if p["name"] == item["name"]), None)
+                p_single = item.get("price_single") or (cat_prod.get("price_single") if cat_prod else item["unit_price"])
+                p_mid = item.get("price_mid") or (cat_prod.get("price_mid") if cat_prod else item["unit_price"])
+                p_wholesale = item.get("price_wholesale") or (cat_prod.get("price_wholesale") if cat_prod else item["unit_price"])
+
+                effective_unit_p = item["unit_price"]
+                effective_model_label = item.get("sales_model", "پیش‌فرض")
+
+                if global_pricing_mode == "تک شاخه / کمتر از ۶ شاخه":
+                    effective_unit_p = p_single
+                    effective_model_label = "تک شاخه"
+                elif global_pricing_mode == "بیشتر از ۶ شاخه":
+                    effective_unit_p = p_mid
+                    effective_model_label = "بالای ۶ شاخه"
+                elif global_pricing_mode == "فروش عمده (بالای ۱۲ شاخه)":
+                    effective_unit_p = p_wholesale
+                    effective_model_label = "عمده بالای ۱۲"
+
+                effective_total_p = effective_unit_p * item["qty"]
+                unit_c = item.get("unit_cost", 0)
+                if not unit_c and cat_prod:
+                    unit_c = cat_prod.get("cost", 0)
+
+                calculated_items.append({
+                    "name": item["name"],
+                    "qty": item["qty"],
+                    "sales_model": effective_model_label,
+                    "unit_price": effective_unit_p,
+                    "total_price": effective_total_p,
+                    "unit_cost": unit_c,
+                    "total_cost": unit_c * item["qty"]
+                })
+
             # تنظیمات تخفیف (درصدی و مبلغی)، هزینه ارسال و رند کردن
             c_adj1, c_adj2, c_adj3, c_adj4 = st.columns([1.4, 1.2, 1.4, 1.2])
             with c_adj1:
@@ -1370,8 +1425,8 @@ with tab_invoice:
                 st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
                 round_prices = st.checkbox("✨ رند به هزار تومان", value=True)
 
-            items_subtotal = sum(i["total_price"] for i in st.session_state.invoice_cart)
-            items_total_cost = sum(i["total_cost"] for i in st.session_state.invoice_cart)
+            items_subtotal = sum(i["total_price"] for i in calculated_items)
+            items_total_cost = sum(i["total_cost"] for i in calculated_items)
 
             if round_prices:
                 items_subtotal = int(round(items_subtotal, -3))
@@ -1435,7 +1490,7 @@ with tab_invoice:
 
                 # ساخت متن فاکتور آماده کپی برای تلگرام / اینستاگرام / واتساپ
                 lines_text = []
-                for idx, item in enumerate(st.session_state.invoice_cart):
+                for idx, item in enumerate(calculated_items):
                     u_p = int(round(item['unit_price'], -3)) if round_prices else item['unit_price']
                     t_p = int(round(item['total_price'], -3)) if round_prices else item['total_price']
                     lines_text.append(f"🔸 {idx+1}. {item['name']} ({item['qty']} عدد × {u_p:,.0f}) = {t_p:,.0f} تومان")
@@ -1444,6 +1499,8 @@ with tab_invoice:
                 if inv_cust_name:
                     invoice_text += f"👤 مشتری گرامی: {inv_cust_name}\n"
                 invoice_text += f"📅 تاریخ: {today_jalali.strftime('%Y/%m/%d')}\n"
+                if global_pricing_mode != "حالت پیش‌فرض / انتخاب‌شده در ردیف‌ها":
+                    invoice_text += f"🏷️ تعرفه محاسبه: {global_pricing_mode}\n"
                 invoice_text += "────────────────────\n"
                 invoice_text += "\n".join(lines_text) + "\n"
                 invoice_text += "────────────────────\n"
@@ -1484,11 +1541,11 @@ with tab_invoice:
                         except ValueError:
                             deliv_j = jdatetime.date(reg_year, reg_month, 29).strftime("%Y/%m/%d")
 
-                        summary_title = " + ".join([f"{i['qty']}×{i['name']}" for i in st.session_state.invoice_cart[:2]])
-                        if len(st.session_state.invoice_cart) > 2:
-                            summary_title += f" و {len(st.session_state.invoice_cart) - 2} مورد دیگر"
+                        summary_title = " + ".join([f"{i['qty']}×{i['name']}" for i in calculated_items[:2]])
+                        if len(calculated_items) > 2:
+                            summary_title += f" و {len(calculated_items) - 2} مورد دیگر"
 
-                        detailed_desc = " | ".join([f"{i['name']} ({i['qty']} عدد - {i['sales_model']})" for i in st.session_state.invoice_cart])
+                        detailed_desc = " | ".join([f"{i['name']} ({i['qty']} عدد - {i['sales_model']})" for i in calculated_items])
                         if inv_shipping > 0:
                             detailed_desc += f" | ارسال: {inv_shipping:,.0f}"
                         if inv_discount_total > 0:

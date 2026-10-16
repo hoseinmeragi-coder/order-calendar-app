@@ -257,14 +257,14 @@ def get_templates_worksheet():
             return sh.worksheet("templates")
         except Exception:
             ws = sh.add_worksheet(title="templates", rows="100", cols="5")
-            ws.append_row(["template_name", "items_json"])
+            ws.append_row(["template_name", "items_json", "image_b64"])
             return ws
     except Exception:
         return None
 
 @st.cache_data(ttl=60)
 def load_templates():
-    """خواندن الگوهای دسته‌گل از شیت templates"""
+    """خواندن الگوهای دسته‌گل از شیت templates (همراه با عکس)"""
     try:
         ws = get_templates_worksheet()
         if ws is None:
@@ -274,17 +274,22 @@ def load_templates():
         for r in records:
             name = str(r.get("template_name", "")).strip()
             raw_items = r.get("items_json", "")
+            img_b64 = str(r.get("image_b64", "")).strip()
             if name and raw_items:
                 try:
-                    templates[name] = json.loads(raw_items)
+                    parsed_items = json.loads(raw_items)
+                    templates[name] = {
+                        "items": parsed_items,
+                        "image": img_b64 if img_b64.lower() != "nan" else ""
+                    }
                 except Exception:
                     continue
         return templates
     except Exception:
         return {}
 
-def save_template_item(template_name, items):
-    """ذخیره یا بروزرسانی یک الگوی دسته‌گل در شیت templates"""
+def save_template_item(template_name, items, image_b64=""):
+    """ذخیره یا بروزرسانی یک الگوی دسته‌گل در شیت templates به همراه تصویر"""
     try:
         ws = get_templates_worksheet()
         if ws is None:
@@ -298,9 +303,9 @@ def save_template_item(template_name, items):
         
         json_str = json.dumps(items, ensure_ascii=False)
         if row_to_update:
-            ws.update(range_name=f"B{row_to_update}", values=[[json_str]])
+            ws.update(range_name=f"B{row_to_update}:C{row_to_update}", values=[[json_str, image_b64]])
         else:
-            ws.append_row([template_name.strip(), json_str])
+            ws.append_row([template_name.strip(), json_str, image_b64])
             
         st.cache_data.clear()
         return True
@@ -491,6 +496,9 @@ if "editing_order_id" not in st.session_state:
 
 if "invoice_cart" not in st.session_state:
     st.session_state.invoice_cart = []
+
+if "loaded_template_image" not in st.session_state:
+    st.session_state.loaded_template_image = ""
 
 today_jalali = jdatetime.date.today()
 
@@ -1159,28 +1167,61 @@ with tab_invoice:
             st.cache_data.clear()
             st.rerun()
 
-    # --- بخش انتخاب دسته‌گل آماده / الگو ---
-    with st.expander("💐 انتخاب دسته‌گل‌های ذخیره‌شده (الگوهای پیش‌فرض)", expanded=bool(saved_templates)):
+    # --- بخش انتخاب دسته‌گل آماده / الگو همراه با تصویر ---
+    with st.expander("💐 انتخاب دسته‌گل‌های ذخیره‌شده (الگوهای پیش‌فرض همراه با عکس)", expanded=bool(saved_templates)):
         if saved_templates:
-            tpl_col1, tpl_col2, tpl_col3 = st.columns([3, 1.2, 0.8])
-            with tpl_col1:
-                selected_tpl = st.selectbox(
-                    "انتخاب دسته‌گل از پیش ساخته شده:",
-                    options=list(saved_templates.keys()),
-                    key="select_saved_tpl"
-                )
-            with tpl_col2:
-                st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
-                if st.button("📥 بارگذاری در فاکتور", use_container_width=True, type="primary"):
-                    st.session_state.invoice_cart = copy.deepcopy(saved_templates[selected_tpl])
-                    st.success(f"اقلام دسته‌گل «{selected_tpl}» به فاکتور منتقل شد.")
-                    st.rerun()
-            with tpl_col3:
-                st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
-                if st.button("🗑️ حذف الگو", use_container_width=True, help="حذف این الگو از شیت"):
-                    if delete_template_item(selected_tpl):
-                        st.warning(f"الگوی «{selected_tpl}» حذف شد.")
+            tpl_col_main, tpl_col_preview = st.columns([3, 1.3])
+            with tpl_col_main:
+                tpl_col1, tpl_col2, tpl_col3 = st.columns([3, 1.2, 0.8])
+                with tpl_col1:
+                    selected_tpl = st.selectbox(
+                        "انتخاب دسته‌گل از پیش ساخته شده:",
+                        options=list(saved_templates.keys()),
+                        key="select_saved_tpl"
+                    )
+                with tpl_col2:
+                    st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
+                    if st.button("📥 بارگذاری در فاکتور", use_container_width=True, type="primary"):
+                        tpl_data = saved_templates[selected_tpl]
+                        st.session_state.invoice_cart = copy.deepcopy(tpl_data["items"])
+                        st.session_state.loaded_template_image = tpl_data.get("image", "")
+                        st.success(f"اقلام دسته‌گل «{selected_tpl}» به فاکتور منتقل شد.")
                         st.rerun()
+                with tpl_col3:
+                    st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
+                    if st.button("🗑️ حذف الگو", use_container_width=True, help="حذف این الگو از شیت"):
+                        if delete_template_item(selected_tpl):
+                            st.warning(f"الگوی «{selected_tpl}» حذف شد.")
+                            st.rerun()
+
+                # نمایش خلاصه اقلام موجود در این دسته‌گل
+                if selected_tpl in saved_templates:
+                    current_tpl_items = saved_templates[selected_tpl]["items"]
+                    summary_text = " ، ".join([f"{it.get('name')} ({it.get('qty', 1)} عدد)" for it in current_tpl_items])
+                    st.caption(f"🌿 **اقلام تشکیل‌دهنده:** {summary_text}")
+
+            with tpl_col_preview:
+                if selected_tpl in saved_templates:
+                    tpl_img = saved_templates[selected_tpl].get("image", "")
+                    if tpl_img:
+                        st.markdown(
+                            f"""
+                            <div style='text-align: center; border: 1px solid #e2e8f0; border-radius: 10px; padding: 6px; background: #ffffff;'>
+                                <img src='data:image/jpeg;base64,{tpl_img}' style='width: 100%; max-height: 140px; object-fit: cover; border-radius: 8px;'/>
+                                <div style='font-size: 0.78rem; color: #718096; margin-top: 4px;'>تصویر دسته‌گل انتخابی</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.markdown(
+                            """
+                            <div style='text-align:center; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 30px 10px; color: #a0aec0; font-size: 0.8rem;'>
+                                📷 بدون تصویر ثبت‌شده
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
         else:
             st.info("هنوز الگویی ذخیره نشده است. اقلام را به فاکتور اضافه کنید و از پایین فاکتور آن را ذخیره نمایید.")
 
@@ -1304,6 +1345,7 @@ with tab_invoice:
             with hdr_col2:
                 if st.button("🔄 ریست و پاک کردن همه اقلام", key="reset_cart_top", use_container_width=True):
                     st.session_state.invoice_cart = []
+                    st.session_state.loaded_template_image = ""
                     st.rerun()
 
             for idx, item in enumerate(st.session_state.invoice_cart):
@@ -1342,16 +1384,21 @@ with tab_invoice:
                         st.session_state.invoice_cart.pop(idx)
                         st.rerun()
 
-            # کادر ذخیره دسته‌گل جاری به عنوان الگوی آماده
-            with st.expander("💾 ذخیره این دسته‌گل در حافظه برای فاکتورهای بعدی"):
-                save_c1, save_c2 = st.columns([3, 1])
+            # کادر ذخیره دسته‌گل جاری به عنوان الگوی آماده همراه با تصویر
+            with st.expander("💾 ذخیره این ترکیب دسته‌گل همراه با عکس برای فاکتورهای بعدی"):
+                save_c1, save_c2, save_c3 = st.columns([2.5, 2, 1])
                 with save_c1:
-                    new_tpl_name = st.text_input("نام دسته‌گل / مدل گل:", placeholder="مثلاً: دسته گل نرگس و رز ۲۰ شاخه")
+                    new_tpl_name = st.text_input("نام دسته‌گل / مدل گل:", placeholder="مثلاً: دسته گل نرگس و رز ۲۰ شاخه", key="new_tpl_name_input")
                 with save_c2:
+                    new_tpl_image = st.file_uploader("عکس دسته گل (اختیاری)", type=["png", "jpg", "jpeg", "webp"], key="new_tpl_image_input")
+                with save_c3:
                     st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
                     if st.button("💾 ذخیره الگو", use_container_width=True):
                         if new_tpl_name.strip():
-                            if save_template_item(new_tpl_name.strip(), st.session_state.invoice_cart):
+                            tpl_img_b64 = ""
+                            if new_tpl_image is not None:
+                                tpl_img_b64 = compress_image_to_base64(new_tpl_image)
+                            if save_template_item(new_tpl_name.strip(), st.session_state.invoice_cart, tpl_img_b64):
                                 st.success(f"الگوی «{new_tpl_name.strip()}» ذخیره شد!")
                                 st.rerun()
                         else:
@@ -1573,7 +1620,7 @@ with tab_invoice:
                             "total_price": grand_total,
                             "tracking_code": "ثبت نشده",
                             "product_desc": detailed_desc,
-                            "order_image": "",
+                            "order_image": st.session_state.get("loaded_template_image", ""),
                             "chk_deposit": bool(inv_deposit > 0),
                             "chk_photo": False,
                             "chk_settle": bool(inv_rem == 0 and grand_total > 0),
@@ -1583,12 +1630,14 @@ with tab_invoice:
                         orders_list.append(new_order)
                         save_orders(orders_list)
                         st.session_state.invoice_cart = []
+                        st.session_state.loaded_template_image = ""
                         st.success(f"فاکتور {new_inv_no} با موفقیت در سفارش‌ها ثبت شد!")
                         st.rerun()
 
                 with btn_clr_col:
                     if st.button("🗑️ پاک کردن فاکتور", use_container_width=True):
                         st.session_state.invoice_cart = []
+                        st.session_state.loaded_template_image = ""
                         st.rerun()
         else:
             st.info("سبد فاکتور خالی است. می‌توانید از بخش بالای صفحه یک دسته‌گل آماده را انتخاب و بارگذاری کنید یا اقلام جدید اضافه نمایید.")

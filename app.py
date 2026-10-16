@@ -1227,7 +1227,7 @@ with tab_invoice:
 
                     with g_cols[c_idx]:
                         if t_img and t_img.lower() != "nan":
-                            img_tag = f"<img src='data:image/jpeg;base64,{t_img}' style='width:100%; height:145px; object-fit:cover; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:8px;'/>"
+                            img_tag = f"<img src='data:image/jpeg;base64,{t_img}' style='width:100%; height:145px; object-fit:contain; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:8px;'/>"
                         else:
                             img_tag = "<div style='width:100%; height:145px; display:flex; align-items:center; justify-content:center; background:#f1f5f9; border-radius:8px; border:1px dashed #cbd5e1; margin-bottom:8px; color:#94a3b8; font-size:2.2rem;'>💐</div>"
                         

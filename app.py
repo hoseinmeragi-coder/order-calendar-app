@@ -842,7 +842,7 @@ def render_order_card(order, prefix="card", is_archived=False):
             if has_img:
                 bottom_section = (
                     f"<div style='display:flex; gap:14px; align-items:flex-start; margin-top:10px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #edf2f7;'>"
-                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:120px; min-width:120px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover;'/>"
+                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:145px; min-width:220px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover;'/>"
                     f"<div style='flex:1; font-size:0.85rem; color:#4a5568; line-height:1.6;'>"
                     f"📝 <b>توضیحات و جزئیات ساخت:</b><br/>{desc_val if desc_val else '<i>بدون توضیحات</i>'}"
                     f"</div>"

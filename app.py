@@ -838,7 +838,7 @@ def render_order_card(order, prefix="card", is_archived=False):
             if has_img:
                 bottom_section = (
                     f"<div style='display:flex; gap:14px; align-items:flex-start; margin-top:10px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #edf2f7;'>"
-                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:145px; min-width:220px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover;'/>"
+                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:130px; min-width:120px; border-radius:8px; border:1px solid #cbd5e1; object-fit:contain; background:#ffffff;'/>"
                     f"<div style='flex:1; font-size:0.85rem; color:#4a5568; line-height:1.6;'>"
                     f"📝 <b>توضیحات و جزئیات ساخت:</b><br/>{desc_val if desc_val else '<i>بدون توضیحات</i>'}"
                     f"</div>"
@@ -1219,7 +1219,7 @@ with tab_invoice:
                 key="tpl_price_filter"
             )
             
-            st.markdown("<div style='font-size:0.9rem; font-weight:bold; color:#4a5568; margin-bottom:10px; margin-top:10px;'>🖼️ کاتالوگ تصویری دسته‌گل‌های آماده (انتخاب سریع با عکس و نام):</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size:0.9rem; font-weight:bold; color:#4a5568; margin-bottom:10px; margin-top:10px;'>🖼️ کاتالوگ تصویری دسته‌گل‌های آماده (انتخاب سریع با عکس کامل و نام):</div>", unsafe_allow_html=True)
             
             filtered_tpl_entries = []
             for t_name, t_data in saved_templates.items():
@@ -1241,9 +1241,9 @@ with tab_invoice:
 
                         with g_cols[c_idx]:
                             if t_img and t_img.lower() != "nan":
-                                img_tag = f"<img src='data:image/jpeg;base64,{t_img}' style='width:100%; height:145px; object-fit:contain; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:8px;'/>"
+                                img_tag = f"<img src='data:image/jpeg;base64,{t_img}' style='width:100%; height:140px; object-fit:contain; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:8px; background:#ffffff;'/>"
                             else:
-                                img_tag = "<div style='width:100%; height:145px; display:flex; align-items:center; justify-content:center; background:#f1f5f9; border-radius:8px; border:1px dashed #cbd5e1; margin-bottom:8px; color:#94a3b8; font-size:2.2rem;'>💐</div>"
+                                img_tag = "<div style='width:100%; height:140px; display:flex; align-items:center; justify-content:center; background:#f1f5f9; border-radius:8px; border:1px dashed #cbd5e1; margin-bottom:8px; color:#94a3b8; font-size:2.2rem;'>💐</div>"
                             
                             st.markdown(
                                 f"<div style='border:1px solid #e2e8f0; border-radius:10px; padding:10px; background:#ffffff; text-align:center; margin-bottom:6px; box-shadow:0 1px 3px rgba(0,0,0,0.02);'>"
@@ -1609,7 +1609,7 @@ with tab_invoice:
                     reg_postal = st.text_input("کد پستی", placeholder="کد پستی ۱۰ رقمی", key="inv_reg_postal")
                 
                 reg_address = st.text_input("آدرس پستی کامل", placeholder="استان، شهر، خیابان، کوچه، پلاک، واحد", key="inv_reg_addr")
-                reg_city = st.text_input("شهر مقصد", placeholder="مثلاً: مشهد، تهران...", key="inv_reg_city")
+                    reg_city = st.text_input("شهر مقصد", placeholder="مثلاً: مشهد، تهران...", key="inv_reg_city")
                 
                 st.markdown("<p style='font-weight:600; margin-bottom:5px; font-size:0.9rem;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)
                 rc_d, rc_m, rc_y = st.columns([1, 1.5, 1.2])

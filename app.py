@@ -1609,7 +1609,7 @@ with tab_invoice:
                     reg_postal = st.text_input("کد پستی", placeholder="کد پستی ۱۰ رقمی", key="inv_reg_postal")
                 
                 reg_address = st.text_input("آدرس پستی کامل", placeholder="استان، شهر، خیابان، کوچه، پلاک، واحد", key="inv_reg_addr")
-                    reg_city = st.text_input("شهر مقصد", placeholder="مثلاً: مشهد، تهران...", key="inv_reg_city")
+                reg_city = st.text_input("شهر مقصد", placeholder="مثلاً: مشهد، تهران...", key="inv_reg_city")
                 
                 st.markdown("<p style='font-weight:600; margin-bottom:5px; font-size:0.9rem;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)
                 rc_d, rc_m, rc_y = st.columns([1, 1.5, 1.2])

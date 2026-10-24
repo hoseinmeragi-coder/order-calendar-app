@@ -526,6 +526,43 @@ def get_effective_remaining(o):
         return 0
     return o.get("remaining_payment", 0)
 
+# ----------------- تابع کمکی برای بارگذاری الگو با قیمت‌های روز کاتالوگ -----------------
+def apply_template_items_with_live_pricing(tpl_items, catalog):
+    updated_cart_items = []
+    for t_item in tpl_items:
+        item_name = t_item.get("name")
+        matched_prod = next((p for p in catalog if p["name"] == item_name), None)
+        
+        qty = int(t_item.get("qty", 1))
+        sales_model = t_item.get("sales_model", "تک شاخه / کمتر از ۶ شاخه")
+        
+        if matched_prod:
+            if sales_model == "بیشتر از ۶ شاخه":
+                unit_p = matched_prod.get("price_mid", 0)
+            elif sales_model == "فروش عمده (بالای ۱۲ شاخه)":
+                unit_p = matched_prod.get("price_wholesale", 0)
+            else:
+                unit_p = matched_prod.get("price_single", 0)
+                
+            unit_c = matched_prod.get("cost", 0)
+            
+            updated_cart_items.append({
+                "category": matched_prod["category"],
+                "name": matched_prod["name"],
+                "sales_model": sales_model,
+                "qty": qty,
+                "unit_price": int(unit_p),
+                "total_price": int(unit_p * qty),
+                "unit_cost": int(unit_c),
+                "total_cost": int(unit_c * qty),
+                "price_single": matched_prod.get("price_single", unit_p),
+                "price_mid": matched_prod.get("price_mid", unit_p),
+                "price_wholesale": matched_prod.get("price_wholesale", unit_p)
+            })
+        else:
+            updated_cart_items.append(t_item)
+    return updated_cart_items
+
 # ----------------- هدر و آمار کلیدی -----------------
 st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")
 
@@ -1177,7 +1214,7 @@ with tab_invoice:
             st.rerun()
 
     # --- بخش انتخاب دسته‌گل آماده / الگو ---
-    with st.expander("💐 انتخاب دسته‌گل‌های ذخیره‌شده (الگوهای پیش‌فرض)", expanded=bool(saved_templates)):
+    with st.expander("💐 انتخاب دسته‌گل‌های ذخیره‌شده (الگوهای پیش‌فرض با محاسبه قیمت روز)", expanded=bool(saved_templates)):
         if saved_templates:
             tpl_col1, tpl_col2, tpl_col3 = st.columns([3, 1.2, 0.8])
             with tpl_col1:
@@ -1193,10 +1230,11 @@ with tab_invoice:
 
             with tpl_col2:
                 st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
-                if st.button("📥 بارگذاری در فاکتور", use_container_width=True, type="primary"):
-                    st.session_state.invoice_cart = copy.deepcopy(sel_tpl_items)
+                if st.button("📥 بارگذاری در فاکتور (با نرخ روز)", use_container_width=True, type="primary"):
+                    live_priced_items = apply_template_items_with_live_pricing(sel_tpl_items, catalog)
+                    st.session_state.invoice_cart = copy.deepcopy(live_priced_items)
                     st.session_state.invoice_template_image = sel_tpl_img
-                    st.success(f"اقلام دسته‌گل «{selected_tpl}» به فاکتور منتقل شد.")
+                    st.success(f"اقلام دسته‌گل «{selected_tpl}» با آخرین قیمت‌های روز به فاکتور منتقل شد.")
                     st.rerun()
             with tpl_col3:
                 st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
@@ -1205,13 +1243,20 @@ with tab_invoice:
                         st.warning(f"الگوی «{selected_tpl}» حذف شد.")
                         st.rerun()
 
-            # نمایش کاتالوگ بصری دسته‌گل‌ها همراه با فیلتر قیمت پیشرفته
+            # نمایش کاتالوگ بصری دسته‌گل‌ها همراه با فیلتر قیمت پیشرفته (محاسبه‌شده با نرخ روز)
             st.markdown("<hr style='margin:12px 0;'>", unsafe_allow_html=True)
             
-            # فیلتر قیمت دسته‌گل‌ها
-            max_tpl_price = max([sum(int(i.get("total_price", 0)) for i in (t_data["items"] if isinstance(t_data, dict) else t_data)) for t_data in saved_templates.values()] + [10000000])
+            # محاسبه مبلغ کل هر الگو بر اساس قیمت‌های روز کاتالوگ جهت فیلتر و نمایش دقیق
+            template_totals = {}
+            for t_name, t_data in saved_templates.items():
+                t_items = t_data["items"] if isinstance(t_data, dict) else t_data
+                live_items = apply_template_items_with_live_pricing(t_items, catalog)
+                t_sum = sum(int(i.get("total_price", 0)) for i in live_items)
+                template_totals[t_name] = t_sum
+
+            max_tpl_price = max(list(template_totals.values()) + [10000000])
             price_filter_range = st.slider(
-                "💵 فیلتر بازه قیمت دسته‌گل‌های آماده (تومان):",
+                "💵 فیلتر بازه قیمت دسته‌گل‌های آماده (با احتساب نرخ روز - تومان):",
                 min_value=0,
                 max_value=int(max_tpl_price),
                 value=(0, int(max_tpl_price)),
@@ -1219,22 +1264,20 @@ with tab_invoice:
                 key="tpl_price_filter"
             )
             
-            st.markdown("<div style='font-size:0.9rem; font-weight:bold; color:#4a5568; margin-bottom:10px; margin-top:10px;'>🖼️ کاتالوگ تصویری دسته‌گل‌های آماده (انتخاب سریع با عکس کامل و نام):</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size:0.9rem; font-weight:bold; color:#4a5568; margin-bottom:10px; margin-top:10px;'>🖼️ کاتالوگ تصویری دسته‌گل‌های آماده (محاسبه خودکار با قیمت‌های جدید):</div>", unsafe_allow_html=True)
             
             filtered_tpl_entries = []
             for t_name, t_data in saved_templates.items():
-                t_items = t_data["items"] if isinstance(t_data, dict) else t_data
-                t_sum = sum(int(i.get("total_price", 0)) for i in t_items)
+                t_sum = template_totals.get(t_name, 0)
                 if price_filter_range[0] <= t_sum <= price_filter_range[1]:
-                    filtered_tpl_entries.append((t_name, t_data))
+                    filtered_tpl_entries.append((t_name, t_data, t_sum))
 
             if filtered_tpl_entries:
                 for row_start in range(0, len(filtered_tpl_entries), 4):
                     g_cols = st.columns(4)
-                    for c_idx, (t_name, t_data) in enumerate(filtered_tpl_entries[row_start:row_start + 4]):
+                    for c_idx, (t_name, t_data, t_sum) in enumerate(filtered_tpl_entries[row_start:row_start + 4]):
                         t_items = t_data["items"] if isinstance(t_data, dict) else t_data
                         t_img = t_data.get("image", "") if isinstance(t_data, dict) else ""
-                        t_sum = sum(int(i.get("total_price", 0)) for i in t_items)
                         items_preview = "، ".join([f"{i.get('qty', 1)}×{i.get('name', '')}" for i in t_items[:3]])
                         if len(t_items) > 3:
                             items_preview += " و..."
@@ -1250,14 +1293,15 @@ with tab_invoice:
                                 f"{img_tag}"
                                 f"<div style='font-weight:bold; font-size:0.92rem; color:#2d3748; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;' title='{t_name}'>{t_name}</div>"
                                 f"<div style='font-size:0.75rem; color:#718096; height:34px; overflow:hidden; margin-top:4px;'>{items_preview}</div>"
-                                f"<div style='font-size:0.82rem; color:#3182ce; font-weight:bold; margin-top:4px;'>{t_sum:,.0f} تومان</div>"
+                                f"<div style='font-size:0.82rem; color:#3182ce; font-weight:bold; margin-top:4px;'>{t_sum:,.0f} تومان (نرخ روز)</div>"
                                 f"</div>",
                                 unsafe_allow_html=True
                             )
                             if st.button(f"✅ انتخاب «{t_name}»", key=f"visual_sel_{row_start}_{c_idx}", use_container_width=True):
-                                st.session_state.invoice_cart = copy.deepcopy(t_items)
+                                live_priced_items = apply_template_items_with_live_pricing(t_items, catalog)
+                                st.session_state.invoice_cart = copy.deepcopy(live_priced_items)
                                 st.session_state.invoice_template_image = t_img
-                                st.success(f"دسته‌گل «{t_name}» در فاکتور بارگذاری شد.")
+                                st.success(f"دسته‌گل «{t_name}» با قیمت روز در فاکتور بارگذاری شد.")
                                 st.rerun()
             else:
                 st.warning("هیچ دسته‌گل آماده‌ای در این بازه قیمتی یافت نشد.")

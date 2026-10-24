@@ -10,13 +10,12 @@ import json
 import copy
 from PIL import Image
 
-تنظیمات اولیه صفحه
-
+# تنظیمات اولیه صفحه
 st.set_page_config(
-page_title="مدیریت سفارش‌ها، تقویم ظرفیت و آنالیز جامع متریال",
-page_icon="🌸",
-layout="wide",
-initial_sidebar_state="collapsed"
+    page_title="مدیریت سفارش‌ها و تقویم ظرفیت (شمسی ابری)",
+    page_icon="📅",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
 استایل اختصاصی راست‌چین (RTL) و کارت‌های مدرن متریال

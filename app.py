@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-استایل اختصاصی راست‌چین (RTL) و کارت‌های مدرن متریال
+# استایل اختصاصی راست‌چین (RTL) و کارت‌های مدرن متریال
 
 st.markdown("""
 

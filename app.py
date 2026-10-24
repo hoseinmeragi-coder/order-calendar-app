@@ -410,9 +410,9 @@ def load_pricing_catalog():
                 "category": current_category,
                 "name": name_cell,
                 "cost": cost_val,
-                "price_single": p1_val,      # تک شاخه / کمتر از ۶ شاخه
-                "price_mid": p6_val,         # بیشتر از ۶ شاخه
-                "price_wholesale": p12_val   # عمده بالای ۱۲ شاخه
+                "price_single": p1_val,
+                "price_mid": p6_val,
+                "price_wholesale": p12_val
             })
 
         return catalog
@@ -423,7 +423,7 @@ def save_orders(orders):
     try:
         ws = get_worksheet()
         if not orders:
-            return  # جلوگیری از خالی شدن تصادفی کل شیت
+            return
         
         df = pd.DataFrame(orders).fillna("").astype(str)
         all_data = [df.columns.tolist()] + df.values.tolist()
@@ -674,7 +674,6 @@ if st.session_state.show_new_order_modal or is_editing:
         desc_val = current_order.get("product_desc", "") if is_editing else ""
         f_product_desc = st.text_area("شرح محصول و جزئیات ساخت", value=desc_val, placeholder="ابعاد، رنگ، متریال، نحوه بسته‌بندی...")
 
-        # آپلود تصویر سفارش
         f_uploaded_image = st.file_uploader("🖼️ آپلود عکس سفارش مشتری (اختیاری)", type=["png", "jpg", "jpeg", "webp"])
 
         col_sub, col_cancel = st.columns([1, 1])
@@ -694,7 +693,6 @@ if st.session_state.show_new_order_modal or is_editing:
             f_rem_pay = parse_int_price(f_rem_raw)
             now_jalali = jdatetime.datetime.now().strftime("%Y/%m/%d %H:%M")
             
-            # فشرده‌سازی و تبدیل تصویر به Base64
             img_b64 = ""
             if f_uploaded_image is not None:
                 img_b64 = compress_image_to_base64(f_uploaded_image)
@@ -834,15 +832,13 @@ def render_order_card(order, prefix="card", is_archived=False):
             debt_color = "#38a169" if rem_p == 0 else "#e53e3e"
 
             desc_val = str(order.get("product_desc", "")).strip()
-
-            # تصویر و قرارگیری توضیحات در کنار تصویر
             img_val = str(order.get("order_image", "")).strip()
             has_img = bool(img_val and img_val.lower() != "nan")
 
             if has_img:
                 bottom_section = (
                     f"<div style='display:flex; gap:14px; align-items:flex-start; margin-top:10px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #edf2f7;'>"
-                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:145px; min-width:220px; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover;'/>"
+                    f"<img src='data:image/jpeg;base64,{img_val}' style='width:120px; height:130px; min-width:120px; border-radius:8px; border:1px solid #cbd5e1; object-fit:contain; background:#ffffff;'/>"
                     f"<div style='flex:1; font-size:0.85rem; color:#4a5568; line-height:1.6;'>"
                     f"📝 <b>توضیحات و جزئیات ساخت:</b><br/>{desc_val if desc_val else '<i>بدون توضیحات</i>'}"
                     f"</div>"
@@ -877,7 +873,6 @@ def render_order_card(order, prefix="card", is_archived=False):
             )
             st.markdown(card_html, unsafe_allow_html=True)
 
-            # چک‌لیست مراحل سفارش
             st.markdown("<div class='order-steps-container'>", unsafe_allow_html=True)
             s0, s1, s2, s3, s4 = st.columns(5)
             
@@ -1210,41 +1205,62 @@ with tab_invoice:
                         st.warning(f"الگوی «{selected_tpl}» حذف شد.")
                         st.rerun()
 
-            # نمایش گالری بصری دسته‌گل‌ها با عکس و نام جهت انتخاب آسان با یک کلیک
+            # نمایش کاتالوگ بصری دسته‌گل‌ها همراه با فیلتر قیمت پیشرفته
             st.markdown("<hr style='margin:12px 0;'>", unsafe_allow_html=True)
-            st.markdown("<div style='font-size:0.9rem; font-weight:bold; color:#4a5568; margin-bottom:10px;'>🖼️ کاتالوگ تصویری دسته‌گل‌های آماده (انتخاب سریع با عکس و نام):</div>", unsafe_allow_html=True)
             
-            tpl_entries = list(saved_templates.items())
-            for row_start in range(0, len(tpl_entries), 4):
-                g_cols = st.columns(4)
-                for c_idx, (t_name, t_data) in enumerate(tpl_entries[row_start:row_start + 4]):
-                    t_items = t_data["items"] if isinstance(t_data, dict) else t_data
-                    t_img = t_data.get("image", "") if isinstance(t_data, dict) else ""
-                    t_sum = sum(int(i.get("total_price", 0)) for i in t_items)
-                    items_preview = "، ".join([f"{i.get('qty', 1)}×{i.get('name', '')}" for i in t_items[:3]])
-                    if len(t_items) > 3:
-                        items_preview += " و..."
+            # فیلتر قیمت دسته‌گل‌ها
+            max_tpl_price = max([sum(int(i.get("total_price", 0)) for i in (t_data["items"] if isinstance(t_data, dict) else t_data)) for t_data in saved_templates.values()] + [10000000])
+            price_filter_range = st.slider(
+                "💵 فیلتر بازه قیمت دسته‌گل‌های آماده (تومان):",
+                min_value=0,
+                max_value=int(max_tpl_price),
+                value=(0, int(max_tpl_price)),
+                step=50000,
+                key="tpl_price_filter"
+            )
+            
+            st.markdown("<div style='font-size:0.9rem; font-weight:bold; color:#4a5568; margin-bottom:10px; margin-top:10px;'>🖼️ کاتالوگ تصویری دسته‌گل‌های آماده (انتخاب سریع با عکس کامل و نام):</div>", unsafe_allow_html=True)
+            
+            filtered_tpl_entries = []
+            for t_name, t_data in saved_templates.items():
+                t_items = t_data["items"] if isinstance(t_data, dict) else t_data
+                t_sum = sum(int(i.get("total_price", 0)) for i in t_items)
+                if price_filter_range[0] <= t_sum <= price_filter_range[1]:
+                    filtered_tpl_entries.append((t_name, t_data))
 
-                    with g_cols[c_idx]:
-                        if t_img and t_img.lower() != "nan":
-                            img_tag = f"<img src='data:image/jpeg;base64,{t_img}' style='width:100%; height:145px; object-fit:cover; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:8px;'/>"
-                        else:
-                            img_tag = "<div style='width:100%; height:145px; display:flex; align-items:center; justify-content:center; background:#f1f5f9; border-radius:8px; border:1px dashed #cbd5e1; margin-bottom:8px; color:#94a3b8; font-size:2.2rem;'>💐</div>"
-                        
-                        st.markdown(
-                            f"<div style='border:1px solid #e2e8f0; border-radius:10px; padding:10px; background:#ffffff; text-align:center; margin-bottom:6px; box-shadow:0 1px 3px rgba(0,0,0,0.02);'>"
-                            f"{img_tag}"
-                            f"<div style='font-weight:bold; font-size:0.92rem; color:#2d3748; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;' title='{t_name}'>{t_name}</div>"
-                            f"<div style='font-size:0.75rem; color:#718096; height:34px; overflow:hidden; margin-top:4px;'>{items_preview}</div>"
-                            f"<div style='font-size:0.82rem; color:#3182ce; font-weight:bold; margin-top:4px;'>{t_sum:,.0f} تومان</div>"
-                            f"</div>",
-                            unsafe_allow_html=True
-                        )
-                        if st.button(f"✅ انتخاب «{t_name}»", key=f"visual_sel_{row_start}_{c_idx}", use_container_width=True):
-                            st.session_state.invoice_cart = copy.deepcopy(t_items)
-                            st.session_state.invoice_template_image = t_img
-                            st.success(f"دسته‌گل «{t_name}» در فاکتور بارگذاری شد.")
-                            st.rerun()
+            if filtered_tpl_entries:
+                for row_start in range(0, len(filtered_tpl_entries), 4):
+                    g_cols = st.columns(4)
+                    for c_idx, (t_name, t_data) in enumerate(filtered_tpl_entries[row_start:row_start + 4]):
+                        t_items = t_data["items"] if isinstance(t_data, dict) else t_data
+                        t_img = t_data.get("image", "") if isinstance(t_data, dict) else ""
+                        t_sum = sum(int(i.get("total_price", 0)) for i in t_items)
+                        items_preview = "، ".join([f"{i.get('qty', 1)}×{i.get('name', '')}" for i in t_items[:3]])
+                        if len(t_items) > 3:
+                            items_preview += " و..."
+
+                        with g_cols[c_idx]:
+                            if t_img and t_img.lower() != "nan":
+                                img_tag = f"<img src='data:image/jpeg;base64,{t_img}' style='width:100%; height:140px; object-fit:contain; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:8px; background:#ffffff;'/>"
+                            else:
+                                img_tag = "<div style='width:100%; height:140px; display:flex; align-items:center; justify-content:center; background:#f1f5f9; border-radius:8px; border:1px dashed #cbd5e1; margin-bottom:8px; color:#94a3b8; font-size:2.2rem;'>💐</div>"
+                            
+                            st.markdown(
+                                f"<div style='border:1px solid #e2e8f0; border-radius:10px; padding:10px; background:#ffffff; text-align:center; margin-bottom:6px; box-shadow:0 1px 3px rgba(0,0,0,0.02);'>"
+                                f"{img_tag}"
+                                f"<div style='font-weight:bold; font-size:0.92rem; color:#2d3748; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;' title='{t_name}'>{t_name}</div>"
+                                f"<div style='font-size:0.75rem; color:#718096; height:34px; overflow:hidden; margin-top:4px;'>{items_preview}</div>"
+                                f"<div style='font-size:0.82rem; color:#3182ce; font-weight:bold; margin-top:4px;'>{t_sum:,.0f} تومان</div>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+                            if st.button(f"✅ انتخاب «{t_name}»", key=f"visual_sel_{row_start}_{c_idx}", use_container_width=True):
+                                st.session_state.invoice_cart = copy.deepcopy(t_items)
+                                st.session_state.invoice_template_image = t_img
+                                st.success(f"دسته‌گل «{t_name}» در فاکتور بارگذاری شد.")
+                                st.rerun()
+            else:
+                st.warning("هیچ دسته‌گل آماده‌ای در این بازه قیمتی یافت نشد.")
         else:
             st.info("هنوز الگویی ذخیره نشده است. اقلام را به فاکتور اضافه کنید و از پایین فاکتور آن را ذخیره نمایید.")
 
@@ -1254,7 +1270,6 @@ with tab_invoice:
             "لطفاً محتوای فایل اکسل «آنالیز جامع» را در یک شیت (Tab) جدید به نام **آنالیز جامع** (یا **pricing**) در کنار شیت orders کپی کنید."
         )
     else:
-        # بخش اول: انتخاب محصول و افزودن به فاکتور
         st.markdown("#### ➕ افزودن ردیف به فاکتور")
         
         categories = ["همه دسته‌ها"] + list(dict.fromkeys([item["category"] for item in catalog if item.get("category")]))
@@ -1286,7 +1301,6 @@ with tab_invoice:
         with ic4:
             sel_qty = st.number_input("تعداد", min_value=1, value=1, step=1, key="inv_qty")
 
-        # تعیین قیمت واحد بر اساس مدل فروش انتخاب شده
         default_unit_price = 0
         unit_cost = 0
         if selected_prod:
@@ -1348,7 +1362,6 @@ with tab_invoice:
                 else:
                     st.error("لطفاً قیمت واحد معتبر وارد کنید.")
 
-        # نمایش نرخ‌های مرجع محصول انتخاب شده برای اطلاع سریع کاربر
         if selected_prod:
             st.caption(
                 f"📊 **نرخ‌های مرجع «{selected_prod['name']}» در اکسل:** "
@@ -1360,7 +1373,6 @@ with tab_invoice:
 
         st.markdown("---")
 
-        # بخش دوم: نمایش اقلام فاکتور و جمع‌بندی
         if st.session_state.invoice_cart:
             hdr_col1, hdr_col2 = st.columns([4, 1.2])
             with hdr_col1:
@@ -1407,7 +1419,6 @@ with tab_invoice:
                         st.session_state.invoice_cart.pop(idx)
                         st.rerun()
 
-            # کادر ذخیره دسته‌گل جاری به عنوان الگوی آماده به همراه عکس
             with st.expander("💾 ذخیره این دسته‌گل در حافظه برای فاکتورهای بعدی"):
                 save_c1, save_c2, save_c3 = st.columns([2.2, 2, 1])
                 with save_c1:
@@ -1431,7 +1442,6 @@ with tab_invoice:
 
             st.markdown("---")
 
-            # --- فیلد تعیین مدل قیمت‌گذاری کل فاکتور ---
             st.markdown("##### 🏷️ تعیین سطح قیمت برای کل اقلام فاکتور:")
             global_pricing_mode = st.radio(
                 "تعیین سطح قیمت برای کل اقلام فاکتور:",
@@ -1446,10 +1456,8 @@ with tab_invoice:
                 label_visibility="collapsed"
             )
 
-            # محاسبه مبالغ هر ردیف و جمع نهایی بر اساس سطح قیمت انتخابی
             calculated_items = []
             for item in st.session_state.invoice_cart:
-                # پیدا کردن محصول در کاتالوگ در صورت نبود قیمت‌های مرجع در الگوهای قدیمی
                 cat_prod = next((p for p in catalog if p["name"] == item["name"]), None)
                 p_single = item.get("price_single") or (cat_prod.get("price_single") if cat_prod else item["unit_price"])
                 p_mid = item.get("price_mid") or (cat_prod.get("price_mid") if cat_prod else item["unit_price"])
@@ -1483,7 +1491,6 @@ with tab_invoice:
                     "total_cost": unit_c * item["qty"]
                 })
 
-            # تنظیمات تخفیف (درصدی و مبلغی)، هزینه ارسال و رند کردن
             c_adj1, c_adj2, c_adj3, c_adj4 = st.columns([1.4, 1.2, 1.4, 1.2])
             with c_adj1:
                 inv_shipping_raw = st.text_input("📦 هزینه بسته‌بندی و ارسال (تومان)", value="0", key="inv_ship")
@@ -1503,7 +1510,6 @@ with tab_invoice:
             if round_prices:
                 items_subtotal = int(round(items_subtotal, -3))
 
-            # محاسبه تخفیف درصدی و جمع کل تخفیف
             inv_discount_pct_amount = int(round(items_subtotal * (inv_disc_pct / 100.0)))
             if round_prices and inv_discount_pct_amount > 0:
                 inv_discount_pct_amount = int(round(inv_discount_pct_amount, -3))
@@ -1519,7 +1525,6 @@ with tab_invoice:
             grand_total = max(0, items_subtotal + inv_shipping - inv_discount_total)
             estimated_profit = grand_total - items_total_cost - inv_shipping
 
-            # کارت‌های خلاصه مالی فاکتور
             mc1, mc2, mc3, mc4 = st.columns(4)
             with mc1:
                 st.markdown(f"""
@@ -1550,17 +1555,16 @@ with tab_invoice:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # بخش سوم: تولید متن فاکتور برای مشتری و ثبت مستقیم در سفارش‌ها
             st.markdown("#### 📤 خروجی فاکتور مشتری و ثبت در سفارش‌ها")
             col_out1, col_out2 = st.columns([2.5, 2.5])
 
             with col_out1:
-                inv_cust_name = st.text_input("نام مشتری (جهت درج در فاکتور)", placeholder="مثلاً: سرکار خانم محمدی", key="inv_c_name")
+                inv_cust_name_default = st.session_state.get("inv_reg_cname", "")
+                inv_cust_name = st.text_input("نام مشتری (جهت درج در فاکتور)", value=inv_cust_name_default, placeholder="مثلاً: سرکار خانم محمدی", key="inv_c_name")
                 inv_deposit_raw = st.text_input("مبلغ بیعانه دریافتی (تومان)", value="0", key="inv_dep")
                 inv_deposit = parse_int_price(inv_deposit_raw)
                 inv_rem = max(0, grand_total - inv_deposit)
 
-                # ساخت متن فاکتور آماده کپی برای تلگرام / اینستاگرام / واتساپ
                 lines_text = []
                 for idx, item in enumerate(calculated_items):
                     u_p = int(round(item['unit_price'], -3)) if round_prices else item['unit_price']
@@ -1592,22 +1596,34 @@ with tab_invoice:
 
             with col_out2:
                 st.markdown("##### 🚀 تبدیل مستقیم این فاکتور به سفارش فعال")
-                st.caption("با تکمیل اطلاعات زیر، این فاکتور مستقیماً به تب سفارش‌ها و تقویم شمسی اضافه می‌شود.")
-                reg_city = st.text_input("شهر مقصد", placeholder="مثلاً: قم، تهران...", key="inv_reg_city")
-                reg_phone = st.text_input("شماره تماس / آیدی مشتری", placeholder="0912... یا @username", key="inv_reg_phone")
+                st.caption("اطلاعات کامل ثبت سفارش (مشابه فرم سربرگ اول) همراه با عکس دسته‌گل:")
                 
-                rc_d, rc_m, rc_y = st.columns(3)
+                reg_cust_name = st.text_input("نام و نام خانوادگی مشتری", value=inv_cust_name, placeholder="مثلاً: علیرضا محمدی", key="inv_reg_cname")
+                reg_phone = st.text_input("شماره تماس", placeholder="مثلاً: 09123456789", key="inv_reg_phone")
+                reg_em_phone = st.text_input("شماره تماس اضطراری", placeholder="شماره تماس دوم یا معرف", key="inv_reg_em")
+                
+                rc_id_col, rc_post_col = st.columns(2)
+                with rc_id_col:
+                    reg_username = st.text_input("آیدی / نام کاربری مشتری", placeholder="@username", key="inv_reg_uname")
+                with rc_post_col:
+                    reg_postal = st.text_input("کد پستی", placeholder="کد پستی ۱۰ رقمی", key="inv_reg_postal")
+                
+                reg_address = st.text_input("آدرس پستی کامل", placeholder="استان، شهر، خیابان، کوچه، پلاک، واحد", key="inv_reg_addr")
+                reg_city = st.text_input("شهر مقصد", placeholder="مثلاً: مشهد، تهران...", key="inv_reg_city")
+                
+                st.markdown("<p style='font-weight:600; margin-bottom:5px; font-size:0.9rem;'>📅 تاریخ تحویل / ارسال (شمسی)</p>", unsafe_allow_html=True)
+                rc_d, rc_m, rc_y = st.columns([1, 1.5, 1.2])
                 with rc_d:
-                    reg_day = st.selectbox("روز تحویل", list(range(1, 32)), index=min(today_jalali.day - 1, 30), key="inv_d")
+                    reg_day = st.selectbox("روز", list(range(1, 32)), index=min(today_jalali.day - 1, 30), key="inv_d")
                 with rc_m:
-                    reg_m_name = st.selectbox("ماه تحویل", month_names, index=today_jalali.month - 1, key="inv_m")
+                    reg_m_name = st.selectbox("ماه", month_names, index=today_jalali.month - 1, key="inv_m")
                     reg_month = month_names.index(reg_m_name) + 1
                 with rc_y:
-                    reg_year = st.selectbox("سال تحویل", [today_jalali.year, today_jalali.year + 1], index=0, key="inv_y")
+                    reg_year = st.selectbox("سال", [today_jalali.year - 1, today_jalali.year, today_jalali.year + 1], index=1, key="inv_y")
 
                 btn_reg_col, btn_clr_col = st.columns([2, 1])
                 with btn_reg_col:
-                    if st.button("✅ ثبت فاکتور در لیست سفارش‌ها", use_container_width=True, type="primary"):
+                    if st.button("✅ ثبت کامل فاکتور و عکس در سفارش‌ها", use_container_width=True, type="primary"):
                         try:
                             deliv_j = jdatetime.date(reg_year, reg_month, reg_day).strftime("%Y/%m/%d")
                         except ValueError:
@@ -1615,7 +1631,7 @@ with tab_invoice:
 
                         summary_title = " + ".join([f"{i['qty']}×{i['name']}" for i in calculated_items[:2]])
                         if len(calculated_items) > 2:
-                            summary_title += f" و {len(calculated_items) - 2} مورد دیگر"
+                            summary_title += f" و لایه‌های دیگر"
 
                         detailed_desc = " | ".join([f"{i['name']} ({i['qty']} عدد - {i['sales_model']})" for i in calculated_items])
                         if inv_shipping > 0:
@@ -1630,12 +1646,12 @@ with tab_invoice:
                         new_order = {
                             "id": new_id,
                             "invoice_no": new_inv_no,
-                            "customer_id": reg_phone if reg_phone.startswith("@") else "",
-                            "customer_name": inv_cust_name if inv_cust_name else "مشتری فاکتور",
-                            "phone": reg_phone if not reg_phone.startswith("@") else "",
-                            "emergency_phone": "",
-                            "address": "",
-                            "postal_code": "",
+                            "customer_id": reg_username,
+                            "customer_name": reg_cust_name if reg_cust_name else "مشتری فاکتور",
+                            "phone": reg_phone,
+                            "emergency_phone": reg_em_phone,
+                            "address": reg_address,
+                            "postal_code": reg_postal,
                             "destination_city": reg_city if reg_city else "-",
                             "product_name": summary_title,
                             "delivery_date": deliv_j,
@@ -1656,11 +1672,11 @@ with tab_invoice:
                         save_orders(orders_list)
                         st.session_state.invoice_cart = []
                         st.session_state.invoice_template_image = ""
-                        st.success(f"فاکتور {new_inv_no} با موفقیت در سفارش‌ها ثبت شد!")
+                        st.success(f"فاکتور {new_inv_no} به همراه عکس و تمامی مشخصات در سفارش‌ها ثبت شد!")
                         st.rerun()
 
                 with btn_clr_col:
-                    if st.button("🗑️ پاک کردن فاکتور", use_container_width=True):
+                    if st.button("🗑️ پاک کردن", use_container_width=True):
                         st.session_state.invoice_cart = []
                         st.session_state.invoice_template_image = ""
                         st.rerun()

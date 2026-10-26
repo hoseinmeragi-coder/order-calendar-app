@@ -198,7 +198,6 @@ def _is_truthy(val):
     return str(val).strip().lower() in ["true", "1", "yes"]
 
 def compress_image_to_base64(uploaded_file, max_size=(350, 350), quality=55):
-    """کوچک کردن حجم تصویر تا کمتر از ۳۰ کیلوبایت جهت همخوانی با محدودیت سلول گوگل شیت"""
     try:
         img = Image.open(uploaded_file)
         if img.mode in ("RGBA", "P"):
@@ -232,8 +231,114 @@ def get_worksheet():
     except Exception:
         return sh.get_worksheet(0)
 
+def get_inventory_worksheet():
+    """دریافت یا ساخت شیت انبارداری در گوگل‌شیت"""
+    try:
+        gc = get_gspread_client()
+        target = st.secrets["connections"]["gsheets"]["spreadsheet"].strip()
+        sh = gc.open_by_url(target) if target.startswith("http") else gc.open_by_key(target)
+        try:
+            return sh.worksheet("inventory")
+        except Exception:
+            ws = sh.add_worksheet(title="inventory", rows="50", cols="5")
+            ws.append_row(["item_code", "item_name", "stock", "unit", "min_alert"])
+            # درج اقلام اولیه مون‌فلو
+            default_items = [
+                ["MAT-01", "پیپ‌پاکن (بسته)", 100, "بسته", 10],
+                ["MAT-02", "گل لیلیوم ۵ پر (شاخه)", 150, "شاخه", 20],
+                ["MAT-03", "چسب حرارتی (عدد)", 50, "عدد", 5],
+                ["MAT-04", "ساقه و رنگ (مجموعه)", 200, "عدد", 30],
+                ["MAT-05", "نوار گاترین (حلقه)", 40, "حلقه", 8],
+                ["MAT-06", "مروارید و تزئینات (بسته)", 60, "بسته", 10],
+                ["MAT-07", "کاغذ رنگی معمولی (برگ)", 300, "برگ", 50],
+                ["MAT-08", "کاغذ زنبری (برگ)", 250, "برگ", 40],
+                ["MAT-09", "کارتن سایز ۳ + کرافت", 30, "عدد", 5],
+                ["MAT-10", "کارتن سایز ۵ + کرافت", 25, "عدد", 5],
+                ["MAT-11", "عروسک جوجه گل‌بسر", 20, "عدد", 3],
+                ["MAT-12", "باکس هدیه", 35, "عدد", 7],
+                ["MAT-13", "تور مرواریدی (متر)", 100, "متر", 15]
+            ]
+            for itm in default_items:
+                ws.append_row(itm)
+            return ws
+    except Exception:
+        return None
+
+@st.cache_data(ttl=60)
+def load_inventory_data():
+    """بارگذاری موجودی انبار از گوگل‌شیت"""
+    try:
+        ws = get_inventory_worksheet()
+        if ws is None:
+            return pd.DataFrame()
+        vals = ws.get_all_values()
+        if not vals or len(vals) < 2:
+            return pd.DataFrame()
+        df = pd.DataFrame(vals[1:], columns=vals[0])
+        df["stock"] = pd.to_numeric(df["stock"], errors="coerce").fillna(0).astype(int)
+        df["min_alert"] = pd.to_numeric(df["min_alert"], errors="coerce").fillna(0).astype(int)
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+def save_inventory_data(df):
+    """ذخیره تغییرات انبار در گوگل‌شیت"""
+    try:
+        ws = get_inventory_worksheet()
+        if ws is not None:
+            data = [df.columns.tolist()] + df.astype(str).values.tolist()
+            ws.clear()
+            ws.update(range_name="A1", values=data)
+            st.cache_data.clear()
+    except Exception as e:
+        st.error(f"خطا در ذخیره انبار: {e}")
+
+def deduct_inventory_for_order(product_name, qty=1):
+    """کسر اتوماتیک اقلام انبار بر اساس محصول ثبت‌شده"""
+    inv_df = load_inventory_data()
+    if inv_df.empty:
+        return
+    
+    p_name_lower = str(product_name).lower()
+    
+    # تعریف فرمول کسر متریال بر اساس نوع محصول
+    if "جوجه گل‌بسر" in p_name_lower or "عروسک" in p_name_lower:
+        deductions = {
+            "عروسک جوجه گل‌بسر": 1 * qty,
+            "پیپ‌پاکن (بسته)": 2 * qty,
+            "کاغذ رنگی معمولی (برگ)": 5 * qty,
+            "چسب حرارتی (عدد)": 1 * qty
+        }
+    elif "لیلیوم" in p_name_lower:
+        deductions = {
+            "گل لیلیوم ۵ پر (شاخه)": 5 * qty,
+            "ساقه و رنگ (مجموعه)": 5 * qty,
+            "پیپ‌پاکن (بسته)": 3 * qty,
+            "چسب حرارتی (عدد)": 1 * qty,
+            "نوار گاترین (حلقه)": 1 * qty
+        }
+    else:
+        # پیش‌فرض عمومی برای سایر دسته‌گل‌ها
+        deductions = {
+            "پیپ‌پاکن (بسته)": 3 * qty,
+            "کاغذ زنبری (برگ)": 2 * qty,
+            "چسب حرارتی (عدد)": 1 * qty,
+            "تور مرواریدی (متر)": 1 * qty
+        }
+        
+    updated = False
+    for idx, row in inv_df.iterrows():
+        name = row["item_name"]
+        if name in deductions:
+            current_stock = int(row["stock"])
+            to_deduct = deductions[name]
+            inv_df.at[idx, "stock"] = max(0, current_stock - to_deduct)
+            updated = True
+            
+    if updated:
+        save_inventory_data(inv_df)
+
 def get_pricing_worksheet():
-    """دریافت شیت مربوط به قیمت‌گذاری محصولات از گوگل شیت"""
     gc = get_gspread_client()
     target = st.secrets["connections"]["gsheets"]["spreadsheet"].strip()
     sh = gc.open_by_url(target) if target.startswith("http") else gc.open_by_key(target)
@@ -248,7 +353,6 @@ def get_pricing_worksheet():
     return None
 
 def get_templates_worksheet():
-    """دریافت یا ساخت شیت مربوط به الگوهای ذخیره‌شده دسته‌گل"""
     try:
         gc = get_gspread_client()
         target = st.secrets["connections"]["gsheets"]["spreadsheet"].strip()
@@ -264,7 +368,6 @@ def get_templates_worksheet():
 
 @st.cache_data(ttl=60)
 def load_templates():
-    """خواندن الگوهای دسته‌گل به همراه تصویر از شیت templates"""
     try:
         ws = get_templates_worksheet()
         if ws is None:
@@ -299,7 +402,6 @@ def load_templates():
         return {}
 
 def save_template_item(template_name, items, image_b64=""):
-    """ذخیره یا بروزرسانی یک الگوی دسته‌گل و عکس آن در شیت templates"""
     try:
         ws = get_templates_worksheet()
         if ws is None:
@@ -328,7 +430,6 @@ def save_template_item(template_name, items, image_b64=""):
         return False
 
 def delete_template_item(template_name):
-    """حذف الگوی دسته‌گل از شیت"""
     try:
         ws = get_templates_worksheet()
         if ws is None:
@@ -346,7 +447,6 @@ def delete_template_item(template_name):
 
 @st.cache_data(ttl=120)
 def load_pricing_catalog():
-    """خواندن و پردازش جدول آنالیز جامع و قیمت‌گذاری محصولات از گوگل شیت"""
     try:
         ws = get_pricing_worksheet()
         if ws is None:
@@ -526,7 +626,6 @@ def get_effective_remaining(o):
         return 0
     return o.get("remaining_payment", 0)
 
-# ----------------- تابع کمکی برای بارگذاری الگو با قیمت‌های روز کاتالوگ -----------------
 def apply_template_items_with_live_pricing(tpl_items, catalog):
     updated_cart_items = []
     for t_item in tpl_items:
@@ -564,7 +663,7 @@ def apply_template_items_with_live_pricing(tpl_items, catalog):
     return updated_cart_items
 
 # ----------------- هدر و آمار کلیدی -----------------
-st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری)")
+st.title("🎛 داشبورد مدیریت و تقویم شمسی سفارش‌ها (ابری + انبارداری)")
 
 total_orders = len(orders_list)
 total_revenue = sum(o.get("total_price", 0) for o in orders_list)
@@ -792,17 +891,22 @@ if st.session_state.show_new_order_modal or is_editing:
                 }
                 orders_list.append(new_item)
                 save_orders(orders_list)
+                
+                # کسر اتوماتیک از انبار
+                deduct_inventory_for_order(f_product_name, qty=1)
+                
                 st.session_state.show_new_order_modal = False
-                st.success(f"سفارش فاکتور {f_invoice_no} در فضای ابری ثبت شد!")
+                st.success(f"سفارش فاکتور {f_invoice_no} ثبت و متریال مصرفی از انبار کسر گردید!")
                 st.rerun()
 
 st.markdown("---")
 
-# ----------------- تب‌های برنامه -----------------
-tab_cards, tab_cal, tab_invoice = st.tabs([
+# ----------------- تب‌های برنامه (اضافه شدن تب انبارداری) -----------------
+tab_cards, tab_cal, tab_invoice, tab_inventory = st.tabs([
     "👥 کارت‌های مشتریان و سفارش‌ها",
     "📅 تقویم شمسی ظرفیت و زمان‌بندی",
-    "🧾 صدور فاکتور و محاسبه قیمت"
+    "🧾 صدور فاکتور و محاسبه قیمت",
+    "📦 انبارداری و موجودی متریال‌ها"
 ])
 
 def is_order_fully_checked(order):
@@ -1213,7 +1317,6 @@ with tab_invoice:
             st.cache_data.clear()
             st.rerun()
 
-    # --- بخش انتخاب دسته‌گل آماده / الگو ---
     with st.expander("💐 انتخاب دسته‌گل‌های ذخیره‌شده (الگوهای پیش‌فرض با محاسبه قیمت روز)", expanded=bool(saved_templates)):
         if saved_templates:
             tpl_col1, tpl_col2, tpl_col3 = st.columns([3, 1.2, 0.8])
@@ -1243,10 +1346,8 @@ with tab_invoice:
                         st.warning(f"الگوی «{selected_tpl}» حذف شد.")
                         st.rerun()
 
-            # نمایش کاتالوگ بصری دسته‌گل‌ها همراه با فیلتر قیمت پیشرفته (محاسبه‌شده با نرخ روز)
             st.markdown("<hr style='margin:12px 0;'>", unsafe_allow_html=True)
             
-            # محاسبه مبلغ کل هر الگو بر اساس قیمت‌های روز کاتالوگ جهت فیلتر و نمایش دقیق
             template_totals = {}
             for t_name, t_data in saved_templates.items():
                 t_items = t_data["items"] if isinstance(t_data, dict) else t_data
@@ -1714,9 +1815,14 @@ with tab_invoice:
                         }
                         orders_list.append(new_order)
                         save_orders(orders_list)
+                        
+                        # کسر اتوماتیک اقلام از انبار به ازای هر محصول در فاکتور
+                        for itm in calculated_items:
+                            deduct_inventory_for_order(itm["name"], qty=int(itm["qty"]))
+
                         st.session_state.invoice_cart = []
                         st.session_state.invoice_template_image = ""
-                        st.success(f"فاکتور {new_inv_no} به همراه عکس و تمامی مشخصات در سفارش‌ها ثبت شد!")
+                        st.success(f"فاکتور {new_inv_no} ثبت و اقلام مصرفی از انبار کسر گردید!")
                         st.rerun()
 
                 with btn_clr_col:
@@ -1726,4 +1832,32 @@ with tab_invoice:
                         st.rerun()
         else:
             st.info("سبد فاکتور خالی است. می‌توانید از بخش بالای صفحه یک دسته‌گل آماده را انتخاب و بارگذاری کنید یا اقلام جدید اضافه نمایید.")
-            # ----------------انیستنت: بخش نمایش کارت‌های محصولات در چهار ستون----------------
+
+# ----------------- تب ۴: انبارداری و موجودی (جدید) -----------------
+with tab_inventory:
+    st.subheader("📦 مدیریت انبارداری و موجودی متریال‌های مون‌فلو")
+    st.markdown("در این بخش موجودی لحظه‌ای اقلام انبار (شامل انواع پیپ‌پاکن، گل‌ها، کاغذها، جعبه‌ها و عروسک‌ها) نمایش داده می‌شود. با هر ثبت سفارش یا تبدیل فاکتور، اقلام به‌طور خودکار کسر می‌شوند.")
+
+    inv_df = load_inventory_data()
+    if not inv_df.empty:
+        # بررسی هشدارهای اتمام موجودی
+        low_stock_items = inv_df[inv_df["stock"] <= inv_df["min_alert"]]
+        if not low_stock_items.empty:
+            st.warning("⚠️ هشدار: اقلام زیر رو به اتمام هستند و نیاز به شارژ مجدد دارند:")
+            for _, row in low_stock_items.iterrows():
+                st.error(f"- **{row['item_name']}**: موجودی فعلی `{row['stock']} {row['unit']}` (کمتر یا مساوی حداقل هشدار)")
+
+        st.markdown("#### 📊 جدول موجودی انبار (قابل ویرایش مستقیم)")
+        edited_inv_df = st.data_editor(
+            inv_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="inventory_data_editor"
+        )
+
+        if st.button("💾 ذخیره تغییرات انبار", type="primary"):
+            save_inventory_data(edited_inv_df)
+            st.success("تغییرات انبار با موفقیت ذخیره شد!")
+            st.rerun()
+    else:
+        st.info("هنوز داده‌ای در انبار ثبت نشده است. شیت inventory به طور خودکار ایجاد خواهد شد.")

@@ -1365,7 +1365,7 @@ with tab_invoice:
                 key="tpl_price_filter"
             )
             
-            st.markdown("<div style='font-size:0.9rem; font-weight:bold; color:#4a5568; margin-bottom:10px; margin-top:10px;'>🖼️ کاتالوگ تصویری دسته‌گل‌های آماده (محاسبه خودکار با قیمت‌های جدید):</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size:0.9rem; font-weight:bold; color:#4a5568; margin-bottom:10px; margin-top:10px;'>🖼️ کاتالوگ دسته‌گل‌های آماده:</div>", unsafe_allow_html=True)
             
             filtered_tpl_entries = []
             for t_name, t_data in saved_templates.items():
@@ -1379,9 +1379,6 @@ with tab_invoice:
                     for c_idx, (t_name, t_data, t_sum) in enumerate(filtered_tpl_entries[row_start:row_start + 4]):
                         t_items = t_data["items"] if isinstance(t_data, dict) else t_data
                         t_img = t_data.get("image", "") if isinstance(t_data, dict) else ""
-                        items_preview = "، ".join([f"{i.get('qty', 1)}×{i.get('name', '')}" for i in t_items[:3]])
-                        if len(t_items) > 3:
-                            items_preview += " و..."
 
                         with g_cols[c_idx]:
                             if t_img and t_img.lower() != "nan":
@@ -1393,8 +1390,7 @@ with tab_invoice:
                                 f"<div style='border:1px solid #e2e8f0; border-radius:10px; padding:10px; background:#ffffff; text-align:center; margin-bottom:6px; box-shadow:0 1px 3px rgba(0,0,0,0.02);'>"
                                 f"{img_tag}"
                                 f"<div style='font-weight:bold; font-size:0.92rem; color:#2d3748; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;' title='{t_name}'>{t_name}</div>"
-                                f"<div style='font-size:0.75rem; color:#718096; height:34px; overflow:hidden; margin-top:4px;'>{items_preview}</div>"
-                                f"<div style='font-size:0.82rem; color:#3182ce; font-weight:bold; margin-top:4px;'>{t_sum:,.0f} تومان (نرخ روز)</div>"
+                                f"<div style='font-size:0.82rem; color:#3182ce; font-weight:bold; margin-top:6px;'>{t_sum:,.0f} تومان</div>"
                                 f"</div>",
                                 unsafe_allow_html=True
                             )

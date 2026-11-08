@@ -1222,13 +1222,14 @@ with tab_cal:
                     item_rem = get_effective_remaining(item)
                     badge_class = "badge-paid" if item_rem == 0 else "badge-debt"
                     item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""
+                    prod_name = item.get("product_name") or "بدون عنوان"
                     
                     is_item_archived = (str(item.get("delivery_date", "")) < today_str) or is_order_fully_checked(item)
                     strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""
                     
                     st.markdown(f"""
                     <div style='background:#f8fafc; border-right:4px solid #3182ce; padding:8px 12px; border-radius:6px; margin-bottom:6px; font-size:0.85rem; {strike_style}'>
-                        📦 <b>{item.get('customer_name')}{item_cid}</b> | مقصد: {item.get('destination_city')} | مانده: {item_rem:,.0f} تومان
+                        📦 <b>{item.get('customer_name')}{item_cid} - {prod_name}</b> | مقصد: {item.get('destination_city')} | مانده: {item_rem:,.0f} تومان
                     </div>
                     """, unsafe_allow_html=True)
                 st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
@@ -1283,11 +1284,12 @@ with tab_cal:
                             badge_class = "badge-paid" if item_rem == 0 else "badge-debt"
                             p_title = item.get('product_name') or item.get('product_desc') or ''
                             item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""
+                            prod_name = item.get("product_name") or "بدون عنوان"
                             
                             is_item_archived = (str(item.get("delivery_date", "")) < today_str) or is_order_fully_checked(item)
                             strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""
 
-                            orders_html += f"<div class='order-badge {badge_class}' style='{strike_style}' title='{p_title}'>📦 {item['customer_name']}{item_cid} ({item['destination_city']})</div>"
+                            orders_html += f"<div class='order-badge {badge_class}' style='{strike_style}' title='{p_title}'>📦 {item['customer_name']}{item_cid} ({prod_name}) - {item['destination_city']}</div>"
                         
                         if len(day_orders) > 3:
                             orders_html += f"<div style='font-size:0.7rem; color:#718096;'>+ {len(day_orders)-3} مورد دیگر...</div>"

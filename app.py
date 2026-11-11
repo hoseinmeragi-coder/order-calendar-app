@@ -1,8 +1,3 @@
-برای این منظور، شرط بایگانی تنها به بررسی **کامل بودن تمام چک‌باکس‌ها** (`is_order_fully_checked(o)`) وابسته شده است و بررسی تاریخ (`str(o.get("delivery_date", "")) < today_str`) که پیش از این باعث بایگانی خودکار سفارش‌های گذشته می‌شد، برداشته شده است. بنابراین تا زمانی که هر ۵ تیک یک سفارش فعال نشوند، حتی اگر تاریخ تحویل آن گذشته باشد در لیست سفارش‌های فعال باقی خواهد ماند.
-
-کد کامل و بدون کوچک‌ترین دستکاری در ساختار به شرح زیر است:
-
-```python
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -247,7 +242,6 @@ def get_inventory_worksheet():
         except Exception:
             ws = sh.add_worksheet(title="inventory", rows="50", cols="5")
             ws.append_row(["item_code", "item_name", "stock", "unit", "min_alert"])
-            # درج اقلام اولیه مون‌فلو
             default_items = [
                 ["MAT-01", "پیپ‌پاکن (بسته)", 100, "بسته", 10],
                 ["MAT-02", "گل لیلیوم ۵ پر (شاخه)", 150, "شاخه", 20],
@@ -306,7 +300,6 @@ def deduct_inventory_for_order(product_name, qty=1):
     
     p_name_lower = str(product_name).lower()
     
-    # تعریف فرمول کسر متریال بر اساس نوع محصول
     if "جوجه گل‌بسر" in p_name_lower or "عروسک" in p_name_lower:
         deductions = {
             "عروسک جوجه گل‌بسر": 1 * qty,
@@ -323,7 +316,6 @@ def deduct_inventory_for_order(product_name, qty=1):
             "نوار گاترین (حلقه)": 1 * qty
         }
     else:
-        # پیش‌فرض عمومی برای سایر دسته‌گل‌ها
         deductions = {
             "پیپ‌پاکن (بسته)": 3 * qty,
             "کاغذ زنبری (برگ)": 2 * qty,
@@ -1864,5 +1856,3 @@ with tab_inventory:
             st.rerun()
     else:
         st.info("هنوز داده‌ای در انبار ثبت نشده است. شیت inventory به طور خودکار ایجاد خواهد شد.")
-
-```

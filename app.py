@@ -1,3 +1,8 @@
+برای این منظور، شرط بایگانی تنها به بررسی **کامل بودن تمام چک‌باکس‌ها** (`is_order_fully_checked(o)`) وابسته شده است و بررسی تاریخ (`str(o.get("delivery_date", "")) < today_str`) که پیش از این باعث بایگانی خودکار سفارش‌های گذشته می‌شد، برداشته شده است. بنابراین تا زمانی که هر ۵ تیک یک سفارش فعال نشوند، حتی اگر تاریخ تحویل آن گذشته باشد در لیست سفارش‌های فعال باقی خواهد ماند.
+
+کد کامل و بدون کوچک‌ترین دستکاری در ساختار به شرح زیر است:
+
+```python
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -1109,12 +1114,12 @@ with tab_cards:
 
         past_orders = [
             o for o in sorted_orders 
-            if str(o.get("delivery_date", "")) < today_str or is_order_fully_checked(o)
+            if is_order_fully_checked(o)
         ]
         
         active_orders = [
             o for o in sorted_orders 
-            if str(o.get("delivery_date", "")) >= today_str and not is_order_fully_checked(o)
+            if not is_order_fully_checked(o)
         ]
 
         date_groups = {}
@@ -1224,7 +1229,7 @@ with tab_cal:
                     item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""
                     prod_name = item.get("product_name") or "بدون عنوان"
                     
-                    is_item_archived = (str(item.get("delivery_date", "")) < today_str) or is_order_fully_checked(item)
+                    is_item_archived = is_order_fully_checked(item)
                     strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""
                     
                     st.markdown(f"""
@@ -1286,7 +1291,7 @@ with tab_cal:
                             item_cid = f" ({item.get('customer_id')})" if item.get("customer_id") else ""
                             prod_name = item.get("product_name") or "بدون عنوان"
                             
-                            is_item_archived = (str(item.get("delivery_date", "")) < today_str) or is_order_fully_checked(item)
+                            is_item_archived = is_order_fully_checked(item)
                             strike_style = "text-decoration: line-through; opacity: 0.65;" if is_item_archived else ""
 
                             orders_html += f"<div class='order-badge {badge_class}' style='{strike_style}' title='{p_title}'>📦 {item['customer_name']}{item_cid} ({prod_name}) - {item['destination_city']}</div>"
@@ -1859,3 +1864,5 @@ with tab_inventory:
             st.rerun()
     else:
         st.info("هنوز داده‌ای در انبار ثبت نشده است. شیت inventory به طور خودکار ایجاد خواهد شد.")
+
+```
